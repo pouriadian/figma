@@ -1,0 +1,22 @@
+{% extends 'admin/content/cms_base.html' %}
+{% load cms_images %}
+{% block cms_content %}
+<div class="fm-breadcrumb"><a href="{% url 'cms-page-overview' %}">مدیریت صفحات</a> ‹ کتابخانه تصاویر</div>
+<div class="fm-row"><div><span class="fm-eyebrow">FAROMID / MEDIA</span><h1 class="fm-title">کتابخانه تصاویر</h1><p class="fm-lead">عکس را یک بار اضافه کنید و در صفحه‌های مختلف از آن استفاده کنید.</p></div><a class="fm-link secondary" href="{% url 'cms-page-overview' %}">بازگشت به صفحات</a></div>
+{% if can_edit %}<div class="fm-card" style="margin:24px 0"><h2>افزودن تصویر به کتابخانه</h2><form method="post" enctype="multipart/form-data" class="fm-form-grid">{% csrf_token %}
+ <div class="fm-field"><label>عنوان عکس</label>{{ form.title }}</div>
+ <div class="fm-field"><label>آپلود JPG / PNG / WebP</label>{{ form.image }}</div>
+ <div class="fm-field"><label>یا انتخاب از فایل‌های موجود سایت</label><details class="fm-advanced"><summary>تنظیمات پیشرفته: ثبت مسیر تصویر اصلی سایت</summary>{{ form.original_path }}<small class="helptext">معمولاً نیاز نیست؛ تصاویر اصلی قبلاً به کتابخانه اضافه شده‌اند.</small></details></div>
+ <div class="fm-field"><label>متن جایگزین تصویر</label>{{ form.alt_text }}</div>
+ <div class="fm-field"><label>دسته‌بندی</label>{{ form.category }}</div>
+ {% if form.errors %}<div class="fm-errors">{{ form.errors }}</div>{% endif %}
+ <div class="fm-field"><button type="submit" class="fm-link primary">ذخیره تصویر</button></div>
+ </form></div>{% endif %}
+<h2 class="fm-step-title">تصاویر موجود</h2>
+<div class="fm-search"><input type="search" id="fm-library-search" placeholder="جستجوی عنوان عکس یا دسته‌بندی" aria-label="جستجو در کتابخانه تصاویر" /></div>
+<div class="fm-media-list">
+{% for item in items %}<div class="fm-media-tile" data-library-search="{{ item.title }} {{ item.category }}">{% if item.url %}<img src="{{ item.url|admin_media }}" alt="{{ item.alt_text }}" />{% endif %}<h3 style="font-size:13px;font-weight:800;margin:9px 0 3px">{{ item.title }}</h3><p style="font-size:11px;color:#7b88a0">{{ item.category }}</p></div>
+{% empty %}<div class="fm-card">هنوز تصویری به کتابخانه اضافه نشده است؛ تصاویر اصلی سایت همچنان در صفحات موجود هستند.</div>{% endfor %}
+</div>
+<script>(function(){const input=document.getElementById('fm-library-search');if(!input)return;input.addEventListener('input',()=>{const q=input.value.trim().toLocaleLowerCase('fa-IR');document.querySelectorAll('[data-library-search]').forEach(card=>card.classList.toggle('fm-hide',!card.dataset.librarySearch.toLocaleLowerCase('fa-IR').includes(q)))});})();</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+name: faromid
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-faromid}
+      POSTGRES_USER: ${POSTGRES_USER:-faromid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    networks: [internal]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB:-faromid}
+      POSTGRES_USER: ${POSTGRES_USER:-faromid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      API_PROXY_SECRET: ${API_PROXY_SECRET:?Set API_PROXY_SECRET in .env}
+      BOOTSTRAP_MIGRATIONS: ${BOOTSTRAP_MIGRATIONS:-0}
+      SEED_INITIAL_DATA: ${SEED_INITIAL_DATA:-0}
+    ports:
+      - '127.0.0.1:8000:8000'
+    volumes:
+      - './backend:/app'
+      - public_media:/app/media
+      - private_resumes:/app/private_media
+    depends_on:
+      db: {condition: service_healthy}
+    networks: [internal]
+
+  notifications:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB:-faromid}
+      POSTGRES_USER: ${POSTGRES_USER:-faromid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DJANGO_ALLOWED_HOSTS: backend
+    volumes:
+      - './backend:/app'
+      - public_media:/app/media
+      - private_resumes:/app/private_media
+    depends_on:
+      - backend
+    command: ['sh', '-c', 'while true; do python manage.py dispatch_notifications --limit 100; sleep 60; done']
+    networks: [internal]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        API_INTERNAL_URL: http://backend:8000
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://backend:8000
+      API_PROXY_SECRET: ${API_PROXY_SECRET}
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+    networks: [internal]
+
+volumes:
+  db_data:
+  public_media:
+  private_resumes:
+networks:
+  internal:
+    driver: bridge

@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-vazirmatn), Tahoma, Arial, sans-serif;
+  --color-brand-ink: #222624;
+  --color-brand-paper: #f5f4f0;
+}
+@layer base {
+  :root { color-scheme: light; }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 90px; }
+  body { margin: 0; }
+  button, input, textarea, select { font: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid #697b70; outline-offset: 3px; }
+}
+
+/* Gentle movement only; the original Faromid raster and SVG assets are untouched. */
+@keyframes faromid-photo-breathe {
+  from { transform: scale(1); }
+  to { transform: scale(1.017); }
+}
+@keyframes faromid-stripes-pulse {
+  from { opacity: .78; filter: brightness(.93); }
+  to { opacity: .86; filter: brightness(1.05); }
+}
+@layer utilities {
+  .faromid-hero-photo { animation: faromid-photo-breathe 18s ease-in-out infinite alternate; }
+  .faromid-hero-stripes { animation: faromid-stripes-pulse 5.5s ease-in-out infinite alternate; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Only active inside the explicitly requested visual editor iframe. */
+.cms-preview-target {position:relative;}
+.cms-preview-target.cms-preview-hover {outline:4px solid #e82938;outline-offset:-4px;z-index:10;cursor:crosshair;}
+.cms-preview-target.cms-preview-selected {outline:4px solid #e82938;outline-offset:-4px;z-index:10;}
+.cms-preview-target.cms-preview-selected::after {content:'بخش انتخاب‌شده';pointer-events:none;position:absolute;top:9px;right:10px;z-index:150;background:#e82938;color:white;border-radius:7px;padding:5px 12px;font:700 13px Tahoma,sans-serif;}
+
+/* Wide, seamless brand marquee. The second unit is only an animation duplicate. */
+.fm-brand-marquee {
+  width: 100%; overflow: hidden; border-block: 1px solid #e8e6e0;
+  background: #f8f7f3; color: #787a78; padding-block: 16px;
+}
+.fm-marquee-track { display: flex; width: max-content; animation: fm-marquee-scroll 36s linear infinite; }
+.fm-marquee-unit { display: flex; flex: none; align-items: center; gap: clamp(26px, 3vw, 56px); padding-inline-end: clamp(26px, 3vw, 56px); }
+.fm-marquee-item { display: inline-flex; flex: none; align-items: center; gap: clamp(16px, 2vw, 38px); white-space: nowrap; font: 600 11px/1.3 Arial,sans-serif; letter-spacing: .22em; }
+.fm-marquee-dot { display: block; width: 5px; height: 5px; border-radius: 50%; background: #bb2532; }
+@keyframes fm-marquee-scroll {to {transform:translateX(-50%);}}
+@media (hover:hover) {.fm-brand-marquee:hover .fm-marquee-track { animation-play-state: paused; }}
+@media (prefers-reduced-motion:reduce) {.fm-marquee-track {animation:none;} .fm-brand-marquee {overflow-x:auto;}}
+
+/* Category-first responsive product browsing. */
+.fm-category-tab {display:inline-flex;min-height:44px;flex:none;align-items:center;justify-content:center;white-space:nowrap;border:1px solid #dfdfdc;border-radius:999px;background:#f9f9f7;padding:10px 18px;font-size:12px;font-weight:600;color:#525752;transition:background-color .2s,border-color .2s,color .2s;}
+.fm-category-tab:hover {border-color:#b8a9aa;color:#8f1926;background:#fff;}
+.fm-category-tab.is-active {background:#202225;color:white;border-color:#202225;box-shadow:inset 0 -2px 0 #c32a37;}
+.fm-product-search,.fm-filter-select {min-width:0;min-height:48px;display:flex;align-items:center;gap:9px;border:1px solid #dfdfdc;border-radius:13px;background:white;padding:0 14px;transition:border-color .2s,box-shadow .2s;}
+.fm-product-search:focus-within,.fm-filter-select:focus-within {border-color:#b72838;box-shadow:0 0 0 3px #bd26311a;}
+.fm-product-search input,.fm-filter-select select {flex:1;min-width:0;width:100%;border:none;background:transparent;color:#33373a;font-size:12px;outline:none;}
+.fm-filter-select select {cursor:pointer;min-height:45px;}

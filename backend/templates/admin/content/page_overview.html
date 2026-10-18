@@ -1,0 +1,19 @@
+{% extends 'admin/content/cms_base.html' %}
+{% block cms_content %}
+<div class="fm-row">
+ <div><span class="fm-eyebrow">FAROMID / CMS</span><h1 class="fm-title">مدیریت صفحات سایت</h1><p class="fm-lead">ابتدا صفحه موردنظر را انتخاب کنید؛ سپس عکس‌ها و متن هر بخش را ویرایش کنید.</p></div>
+ <a class="fm-link" href="{% url 'cms-media-library' %}">کتابخانه تصاویر ↗</a>
+</div>
+<div class="fm-grid">
+{% for page in pages %}
+<a href="{% url 'cms-page-editor' page.key %}" class="fm-card fm-page-card">
+ <div class="fm-row"><span class="fm-chip">{{ page.key }}</span><span style="font-size:12px;color:#718096">{{ page.sections.count }} بخش</span></div>
+ <div class="fm-page-preview"><span class="material-symbols-outlined" aria-hidden="true">web</span></div>
+ <h2 style="margin-top:7px">{{ page.name }}</h2>
+ <p>ویرایش تصاویر، عنوان‌ها، متن‌ها و انتشار بخش‌های این صفحه</p>
+ <span style="font-size:12px;font-weight:700;color:#9360da">مدیریت بخش‌های این صفحه ←</span>
+</a>
+{% empty %}<p>هنوز صفحه‌ای تعریف نشده است. فرمان python manage.py seed_site_pages را اجرا کنید.</p>{% endfor %}
+</div>
+<div class="fm-card"><h3>ویرایش بدون تغییر فایل‌های سایت</h3><p>عکس‌های فعلی سایت حفظ می‌شوند. هر تغییری ابتدا پیش‌نویس است و فقط با انتخاب «انتشار در سایت» قابل مشاهده می‌شود. تصاویر جدید در پوشه آپلودهای جداگانه ذخیره خواهند شد.</p></div>
+{% endblock %}

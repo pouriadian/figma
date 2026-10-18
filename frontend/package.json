@@ -1,0 +1,31 @@
+{
+  "name": "faromid-website",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "lint": "tsc --noEmit",
+    "verify:design-free": "node scripts/verify-design-free.mjs",
+    "verify:assets": "node scripts/verify-assets.mjs",
+    "verify:source": "node scripts/verify-source.mjs",
+    "verify:v55": "node scripts/verify-v55.mjs",
+    "check": "npm run verify:design-free && npm run verify:assets && npm run verify:source && npm run verify:v55 && npm run lint"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.10",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5.6.0"
+  }
+}

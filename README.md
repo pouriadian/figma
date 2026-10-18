@@ -1,103 +1,110 @@
-# Faromid – Next.js website
+> **Update 5.3:** For the new right-hand collapsible admin navigation, modern product/section modals, simplified product specifications, and consistent view analytics, see [PANEL_V53_FA.md](PANEL_V53_FA.md).
 
-پیاده‌سازی چندصفحه‌ای وب‌سایت **فرامید** از فایل Figma ارسالی (`poria51.zip` / `poria1.fig`).
+# FAROMID — Full Stack Website + Standalone Next.js Admin Panel
 
-## پیش‌نیازها
+**Version: 5.1 — Next.js `/panel`, Django REST API, no Django Unfold; staff login fix**
 
-- Node.js نسخه 20.19 یا بالاتر (نسخه 22 LTS توصیه می‌شود)
-- npm
+The Faromid public website remains on Next.js (port 3000). The employee-facing admin application is a separate, unlinked route in the **same Next.js project**, at **`http://localhost:3000/panel`**. Django (port 8000) supplies the API, authorization, storage and database. No admin link is placed in the public website header or footer. The 83 original frontend raster/SVG assets are left byte-for-byte unchanged.
 
-## اجرا روی ویندوز، macOS یا لینوکس
+## Windows: first time, without Docker
 
-ترمینال را در همان پوشه‌ای باز کنید که `package.json` قرار دارد و اجرا کنید:
+Prerequisites: Python 3.12+ and Node.js 20+.
 
-```bash
-npm install
-npm run dev
+1. Extract the ZIP. Run `setup-first-time.cmd` in the project root. It creates `backend/.venv`, installs requirements, writes local `.env`, migrates SQLite, seeds staff roles, catalog and CMS pages, installs frontend dependencies and offers to create a superuser. No Docker required.
+2. Later, run `start-dev.cmd`. It starts Django and Next.js in two separate CMD windows.
+3. Open `http://localhost:3000/panel/login` and log in with the **superuser email and password**. Open the admin at `http://localhost:3000/panel`. Public site: `http://localhost:3000/`.
+
+If `npm ci` fails with `EPERM: unlink next-swc...`, close all running Next.js/Node processes before reinstalling. Never delete the existing SQLite/media files to fix an npm error.
+
+## Upgrade an existing Faromid v4 installation
+
+Before replacing code, BACK UP:
+- `backend/db.sqlite3` (SQLite data)
+- `backend/media/` and `backend/private_media/` (files and private resumes)
+- `backend/.env` and `frontend/.env.local` (server secrets)
+
+Extract in a separate location or replace source without overwriting these files. It is safe to keep `backend/.venv` and `frontend/node_modules` when using compatible package versions. From backend, run:
+
+```cmd
+.venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py check
+python manage.py migrate
+python manage.py seed_roles
+python manage.py seed_site_pages
 ```
 
-مرورگر را باز کنید:
+**No new database models were introduced in v5**; the panel calls existing model tables with new, permission-controlled API endpoints. Do not run `flush`, remove migration files or reinitialize the database. `django-unfold` is no longer a requirement; if installed in an existing venv it is no longer imported.
 
-**http://localhost:3000**
-
-برای نسخه Production:
-
-```bash
-npm run build
-npm run start
-```
-
-اگر در Windows PowerShell دستور `npm` به‌دلیل محدودیت ExecutionPolicy خطا داد:
-
-```powershell
-npm.cmd install
-npm.cmd run dev
-```
-
-## صفحات سایت
-
-| URL | صفحه | مرجع طراحی |
-| --- | --- | --- |
-| `/` | صفحه اصلی | فریم Home |
-| `/products` | محصولات آنتی‌فینگر | فریم Products |
-| `/about` | درباره ما | فریم About |
-| `/careers` | همکاری با ما | فریم Careers |
-| `/dealership` | اخذ نمایندگی | فریم Dealership |
-| `/contact` | تماس با ما | فریم Contact |
-| `/gallery` | گالری پروژه‌ها | فریم Gallery |
-| `/exhibitions` | نمایشگاه‌ها | فریم Exhibitions |
-| `/textures` | بافت و تکسچر محصولات | صفحه تکمیلی (فریم مستقل در Figma نبود) |
-| `/products/product-1` تا `/products/product-12` | جزئیات نمونه محصول | صفحه تکمیلی؛ داده‌ها نمونه‌اند |
-
-## معماری و تکنولوژی
-
-- Next.js 15، React 19 و TypeScript، با **App Router**
-- CSS اختصاصی بدون وابستگی به Tailwind
-- نسخه دسکتاپ: بازسازی لایه‌ای از اندازه‌ها، مختصات، رنگ‌ها، متن‌ها، تصاویر و SVGهای استخراج‌شده از Figma
-- نسخه موبایل و تبلت: تطبیق واکنش‌گرا با کامپوننت‌های قابل استفاده مجدد
-- لینک‌های ناوبری، مشاهده بزرگ تصویر در گالری و صفحات نمونه محصول
-- Metadata صفحات، `sitemap.xml` و `robots.txt`
-- تصاویر WebP در پوشه پروژه ذخیره شده‌اند؛ برای نمایش نیازی به دریافت آنلاین عکس‌ها نیست
-
-### ساختار فایل‌ها
+## Main architecture
 
 ```text
-faromid-nextjs/
-├── public/assets/
-│   ├── logo/                # لوگوی برند
-│   ├── ui/                  # SVGهای رابط (مثل hero-stripes)
-│   ├── home/                # تصاویر صفحه اصلی
-│   ├── products/            # تصاویر محصولات + textures/
-│   ├── gallery/             # گالری پروژه‌ها
-│   ├── exhibitions/         # نمایشگاه‌ها
-│   ├── about/               # درباره ما
-│   ├── contact/             # تماس (نقشه و …)
-│   ├── careers/             # همکاری (در صورت افزودن فایل)
-│   ├── dealership/          # نمایندگی
-│   ├── backgrounds/         # بنرها و پس‌زمینه‌های صفحات
-│   └── shared/              # تصاویر مشترک / رزرو
-├── src/
-│   ├── app/                 # مسیرها و SEO
-│   ├── components/          # کامپوننت‌های دسکتاپ/موبایل و فرم
-│   ├── design/              # داده‌های هشت فریم اصلی Figma
-│   └── lib/                 # media.ts، assets.ts، asset-paths.json
-├── next.config.ts
-├── package.json
-└── tsconfig.json
+faromid-fullstack/
+  frontend/                    Next.js 15 + React + Tailwind v4
+    src/app/panel/             private admin application (same project, no public nav link)
+    src/app/api/panel/         same-origin BFF, secure HttpOnly admin token cookies
+    src/components/panel/      sidebar, login, dashboard, CMS, charts, tables, editors
+    src/app/                   original public Faromid website
+    public/assets/            original 83 assets (unchanged)
+  backend/                     Django 5.2 + Django REST Framework + JWT
+    management/api.py         per-role admin API and DB aggregation
+    content/                  CMS, draft snapshots and uploads
+    catalog/                  products, images and PDFs
+    accounts/                 users, roles, representatives
+    crm/                      inquiries, jobs and private resumes
+    communications/           announcements and delivery tracking
+    analytics/                real page/product view events
+    config/                   API router and settings
+  setup-first-time.cmd
+  start-dev.cmd
+  PANEL_IMPLEMENTATION_FA.md
 ```
 
-## نکات قبل از انتشار سایت
+### Admin routes (all at localhost:3000)
 
-1. **فرم‌های تماس/رزومه/نمایندگی:** فعلاً با `mailto:` برنامه ایمیل باز می‌شود. هیچ API ارسال فرم یا پایگاه‌داده‌ای در این پروژه وجود ندارد. برای ارسال و ذخیره‌سازی واقعی، به Django REST Framework یا سرویس بک‌اند وصل کنید.
-2. **اطلاعات محصولات و رویدادها:** صفحات جزئیات محصولات، چند شناسه و عنوان نمایشی هستند. پیش از انتشار، کاتالوگ و داده‌های واقعی خود را جایگزین کنید.
-3. **فونت‌ها:** فایل Figma از فونت‌هایی مثل IRAN Sans و Inter استفاده می‌کند، ولی خود فایل Figma فایل فونت قابل انتشار را دربر ندارد؛ فعلاً از فونت‌های جایگزین سیستم استفاده شده است. برای دقت کامل تایپوگرافی، فونت دارای مجوز مناسب را در پروژه قرار دهید.
-4. **دامنه SEO:** آدرس `https://faromid.com` در `src/app/sitemap.ts` و `src/app/robots.ts` نمونه در نظر گرفته شده؛ با دامنه نهایی سایت چک/جایگزین شود.
-5. **محدودیت بازسازی:** ظاهر دسکتاپ مستقیماً از لایه‌های واقعی Figma پیاده‌سازی شده، اما برخی ماسک‌ها، فیلترها و افکت‌های خاص Figma ممکن است در CSS/SVG کمی متفاوت باشند. نسخه موبایل طراحی تطبیقی است، نه نسخه Figma جداگانه.
+| Route | Function |
+|---|---|
+| `/panel/login` | Employee login using Django staff account |
+| `/panel` | KPI cards, traffic chart, top-products history/chart, inquiries, pages |
+| `/panel/pages` | Select a website page |
+| `/panel/pages/home` | Manage Home section list and SEO |
+| `/panel/pages/home/sections/ID` | Edit title, image, rich-text markup, draft, publish, gallery, featured products |
+| `/panel/media` | Upload/choose public images from asset library |
+| `/panel/products` | Products list + actual top-products chart |
+| `/panel/products/new` and `/panel/products/ID` | Catalog, images, PDF, specs and SEO |
+| `/panel/representatives` | Company reps list and records |
+| `/panel/inquiries` | Track requests and status history |
+| `/panel/applications` | HR review + secure resume download |
+| `/panel/content` | News, gallery, exhibitions and projects |
+| `/panel/announcements` | Notification drafts and dispatch queue |
+| `/panel/deliveries` | Actual per-recipient delivery reports |
+| `/panel/users` | Manage staff roles (permission-gated) |
+| `/panel/reports` | Analytics dashboard |
 
-## وضعیت اعتبارسنجی
+### Django API and authentication
 
-- ۸ فایل داده طراحی JSON قابل خواندن هستند.
-- سورس TypeScript/TSX از نظر سینتکس بررسی شده و خطای نحوی ندارد.
-- تمام تصاویر ارجاع‌شده در طراحی اصلی در پوشه Assets موجودند.
-- نمونه Home با مرورگر هدلس رندر و از نظر لود تصاویر و نبود خطای JS بررسی شده است.
-- **Build نهایی Next.js در محیط تولید فایل انجام نشده است**، زیرا دسترسی DNS به `registry.npmjs.org` در آن محیط مسدود بود. روی رایانه خود پس از `npm install`، دستور `npm run build` را اجرا کنید.
+- `POST /api/v1/auth/staff-token/` exchanges staff email/password for Django JWT (Next BFF validates staff access before setting **HttpOnly** cookies). The existing `/api/v1/auth/token/` remains for representatives. The staff route has a separate rate limit and Next.js preserves Django 400/401/403/429 status codes.
+- `GET /api/v1/manage/me/` gives account profile and module permissions.
+- `GET /api/v1/manage/dashboard/?days=7|30|90` returns **real** DB-aggregated series, request statuses, most visited pages, top product daily series.
+- `GET/PATCH/POST /api/v1/manage/{resource}/` covers products, images, categories, pages, sections, section-images, media, content, reps, inquiries, applications, announcements, deliveries and users; permissions are enforced on Django on every request.
+- `POST /api/v1/manage/sections/{id}/publish/` publishes a sanitized snapshot; drafts remain private.
+- `GET /api/v1/manage/applications/{id}/resume/` requires HR permissions; private resumes never become public files.
+- `GET /api/v1/site-pages/home/` remains the **published-only** source for the public Next.js Home page.
+- `http://127.0.0.1:8000/admin/` is now only Django's **native technical maintenance admin**, not the employee-facing console. Django Unfold is not used.
+
+### Security notes
+
+All admin operations use permission checks on Django, and all browser admin data goes through Next.js same-origin API handlers. Tokens are stored in HttpOnly, SameSite cookies and never accessible to client JavaScript. Mutating admin routes require same-origin requests. Uploads pass through Django's MIME/content validators. There is no production default password; a superuser must be created locally. The release must be integration-tested with real Django/Next.js installs and production HTTPS/proxy settings before deployment.
+
+For a Persian editor guide and migration notes read [PANEL_IMPLEMENTATION_FA.md](PANEL_IMPLEMENTATION_FA.md).
+
+## Panel login repair (v5.1)
+
+See `LOGIN_FIX_FA.md`. If `/panel/login` returns an HTTP error, run `CHECK_PANEL_LOGIN.cmd` while Django is running. The diagnostic does not print passwords or tokens. Replace source files without deleting `backend/db.sqlite3`, media directories or `.env` files; restart both servers afterwards.
+
+---
+
+## Faromid v5.5: Homepage, navbar, CMS preview and catalog filters
+
+See [FAROMID_V55_GUIDE_FA.md](FAROMID_V55_GUIDE_FA.md) for the full Persian Windows upgrade instructions.
+Run `UPGRADE_FAROMID_V55.cmd` to add the Home `marquee` section without overwriting current content, then `CHECK_FAROMID_V55.cmd` to execute the Django/Next.js tests on Windows. Existing `.env` files and `backend/db.sqlite3` are intentionally not included in this source distribution.

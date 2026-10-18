@@ -1,0 +1,59 @@
+{% extends 'admin/content/cms_base.html' %}
+{% block cms_content %}
+<div class="fm-breadcrumb"><a href="{% url 'cms-page-overview' %}">مدیریت صفحات</a> ‹ {{ page.name }}</div>
+<div class="fm-row">
+ <div><span class="fm-eyebrow">PAGE / {{ page.key }}</span><h1 class="fm-title">{{ page.name }}</h1><p class="fm-lead">هر کارت یک قسمت از همین صفحه در سایت است.</p></div>
+ <div class="fm-row"><a class="fm-link secondary" href="{{ live_url }}" target="_blank" rel="noopener noreferrer">مشاهده صفحه سایت ↗</a><a class="fm-link" href="{% url 'cms-media-library' %}">تصاویر</a></div>
+</div>
+<div class="fm-section-list" id="fm-sortable-sections">
+{% for section in sections %}
+<div class="fm-section-line" draggable="{% if can_edit %}true{% else %}false{% endif %}" data-section-id="{{ section.pk }}">
+ <span class="fm-order">{{ forloop.counter }}</span>
+ <div style="flex:1;min-width:0"><h2 style="font-size:16px;font-weight:800;margin:0 0 7px">{{ section.name }}</h2><div class="fm-row" style="justify-content:flex-start"><span class="fm-chip">{{ section.get_kind_display }}</span>{% if section.is_published %}<span class="fm-chip live">● منتشر شده</span>{% else %}<span class="fm-chip draft">○ پیش‌نویس</span>{% endif %}</div></div>
+ {% if can_edit %}<div class="fm-movers" aria-label="تغییر ترتیب نمایش {{ section.name }}"><button type="button" data-move="up" class="fm-link secondary" aria-label="انتقال {{ section.name }} به بالا">↑</button><button type="button" data-move="down" class="fm-link secondary" aria-label="انتقال {{ section.name }} به پایین">↓</button></div>{% endif %}
+ <a href="{% url 'cms-section-editor' page.key section.pk %}" class="fm-link primary">ویرایش بخش ←</a>
+</div>
+{% empty %}<div class="fm-card">هیچ بخشی وجود ندارد.</div>{% endfor %}
+</div>
+{% if can_edit %}
+<form method="post" id="fm-section-order-form">{% csrf_token %}<input type="hidden" name="action" value="reorder-sections"><input type="hidden" name="ordered_ids" id="fm-ordered-ids"><div class="fm-row" style="justify-content:flex-start;margin-bottom:24px"><button type="submit" class="fm-link">ذخیره ترتیب بخش‌ها</button><span class="fm-legend">برای جابه‌جایی کارت‌ها را با موس بکشید و رها کنید. ترتیب منتشرشده نیز تغییر می‌کند.</span></div></form>
+<div class="fm-grid" style="grid-template-columns:repeat(auto-fit,minmax(290px,1fr))">
+<div class="fm-card">
+ <h2>افزودن بخش جدید</h2><p>برای افزودن یک گالری، عکس، متن یا محصولات ویژه به صفحه.</p>
+ <form method="post">{% csrf_token %}<input type="hidden" name="action" value="create-section" />
+  <div class="fm-field"><label for="id_name">نام بخش</label>{{ new_form.name }}</div>
+  <div class="fm-field"><label for="id_kind">نوع بخش</label>{{ new_form.kind }}</div>
+  <button class="fm-link primary" type="submit">افزودن بخش</button>
+ </form>
+</div>
+<div class="fm-card"><h2>تنظیمات صفحه برای گوگل</h2><p>اختیاری؛ محتوای قابل‌مشاهده سایت با این فیلدها تغییر نمی‌کند.</p><details class="fm-advanced"><summary>نمایش فیلدهای عنوان و سئوی صفحه</summary>
+ <form method="post">{% csrf_token %}<input type="hidden" name="action" value="save-seo" />
+  <div class="fm-field"><label>عنوان صفحه</label>{{ seo_form.title }}</div>
+  <div class="fm-field"><label>توضیحات</label>{{ seo_form.description }}</div>
+  <div class="fm-field"><label>عنوان سئو</label>{{ seo_form.seo_title }}</div>
+  <div class="fm-field"><label>توضیحات سئو</label>{{ seo_form.seo_description }}</div>
+  <div class="fm-field"><label>{{ seo_form.indexable }} اجازه نمایش در گوگل</label></div>
+  <button class="fm-link primary" type="submit">ذخیره تنظیمات سئو</button>
+ </form></details>
+</div></div>
+{% endif %}
+<script>
+(function(){
+ const list=document.getElementById('fm-sortable-sections'),form=document.getElementById('fm-section-order-form');
+ if(!list||!form)return;
+ let dragging=null;
+ list.querySelectorAll('[data-section-id]').forEach(item=>{
+  item.style.cursor='grab';item.addEventListener('dragstart',()=>{dragging=item;item.style.opacity='.55'});
+  item.addEventListener('dragend',()=>{item.style.opacity='1';dragging=null});
+  item.addEventListener('dragover',e=>e.preventDefault());
+  item.addEventListener('drop',e=>{e.preventDefault();if(!dragging||dragging===item)return;const nodes=[...list.children];if(nodes.indexOf(dragging)<nodes.indexOf(item)){item.after(dragging)}else{item.before(dragging)}});
+ });
+ list.querySelectorAll('[data-move]').forEach(button=>button.addEventListener('click',()=>{
+  const item=button.closest('[data-section-id]');if(!item)return;
+  if(button.dataset.move==='up'&&item.previousElementSibling){item.previousElementSibling.before(item);}
+  if(button.dataset.move==='down'&&item.nextElementSibling){item.nextElementSibling.after(item);}
+ }));
+ form.addEventListener('submit',()=>{document.getElementById('fm-ordered-ids').value=[...list.querySelectorAll('[data-section-id]')].map(item=>item.dataset.sectionId).join(',')});
+})();
+</script>
+{% endblock %}

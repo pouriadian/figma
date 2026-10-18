@@ -1,0 +1,14 @@
+Django>=5.2.17,<5.3
+djangorestframework>=3.17.2,<3.19
+djangorestframework-simplejwt>=5.5,<6
+django-cors-headers>=4.7,<5
+psycopg[binary]>=3.2,<3.4
+Pillow>=11.2,<13
+python-dotenv>=1.1,<2
+requests>=2.32,<3
+gunicorn>=23,<25
+whitenoise>=6.8,<7
+bleach>=6.2,<7
+
+# Import the provided representatives Excel safely, locally.
+openpyxl>=3.1.4,<4

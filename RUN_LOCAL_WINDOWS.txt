@@ -1,0 +1,30 @@
+FAROMID FULL-STACK / ADMIN UI V3 / WINDOWS (NO DOCKER)
+======================================================
+Keep setup-first-time.cmd and start-dev.cmd in the project root
+(the same folder as backend/ and frontend/).
+
+FIRST TIME:
+  Double-click setup-first-time.cmd
+  - Requires Python 3.12+ and Node.js 20+
+  - Creates backend/.venv
+  - Installs Django and Next.js dependencies
+  - Creates local .env files with synchronized API secrets
+  - Initializes database (SQLite by default) and CMS pages
+  - Creates Django superuser if none exists
+  - Starts both development servers
+
+LATER:
+  Double-click start-dev.cmd
+
+Web site:       http://localhost:3000
+Django Unfold:  http://127.0.0.1:8000/admin/
+CMS pages:      http://127.0.0.1:8000/admin/site-pages/
+Media library:  http://127.0.0.1:8000/admin/site-media/
+
+Close both CMD windows with Ctrl+C to stop servers.
+
+If moving from an older Faromid install, back up backend/db.sqlite3,
+backend/media, backend/private_media, frontend/.env.local and
+backend/.env before replacing any files. Keep PostgreSQL backups where used.
+
+See ADMIN_REDESIGN_FA.md and CMS_GUIDE_FA.md.

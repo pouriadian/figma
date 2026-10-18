@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Faromid">
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="#8B5CF6"/>
+  <path d="M17 17h30v8H26v6h16v8H26v10h-9V17z" fill="#fff"/>
+  <path d="M34 31h13v8H34z" fill="#DAC5FF"/>
+</svg>

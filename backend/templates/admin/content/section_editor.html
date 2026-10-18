@@ -1,0 +1,109 @@
+{% extends 'admin/content/cms_base.html' %}
+{% load cms_images %}
+{% block cms_content %}
+<div class="fm-breadcrumb"><a href="{% url 'cms-page-overview' %}">صفحات سایت</a> ‹ <a href="{% url 'cms-page-editor' page.key %}">{{ page.name }}</a> ‹ {{ section.name }}</div>
+<div class="fm-row">
+ <div><span class="fm-eyebrow">PAGE / {{ page.key }} / {{ section.key }}</span><h1 class="fm-title">ویرایش {{ section.name }}</h1><p class="fm-lead">تصاویر و متن را تغییر دهید، ابتدا پیش‌نویس ذخیره کنید و پس از بررسی منتشر کنید.</p></div>
+ <div>{% if section.is_published %}<span class="fm-chip live">● نسخه منتشرشده فعال است</span>{% else %}<span class="fm-chip draft">○ هنوز منتشر نشده</span>{% endif %}</div>
+</div>
+<div class="fm-side-layout">
+ <div class="fm-card">
+  {% if form.errors %}<div class="fm-errors">لطفاً اطلاعات نامعتبر را اصلاح کنید: {{ form.errors }}</div>{% endif %}
+  <form method="post" enctype="multipart/form-data" id="fm-main-editor">
+   {% csrf_token %}
+   <h2 class="fm-step-title">۱. عنوان و توضیحات</h2>
+   <div class="fm-field"><label for="{{ form.draft_title.id_for_label }}">عنوان نمایش در سایت</label>{{ form.draft_title }}<span class="helptext">اگر خالی باشد، عنوان فعلی سایت دست‌نخورده می‌ماند.</span></div>
+   <div class="fm-field"><label for="{{ form.draft_subtitle.id_for_label }}">زیرعنوان</label>{{ form.draft_subtitle }}</div>
+   <div class="fm-field">
+    <label>متن و توضیحات</label>
+    <div class="fm-toolbar"><button type="button" data-cmd="bold" title="پررنگ"><strong>B</strong></button><button type="button" data-cmd="italic" title="مورب"><em>I</em></button><button type="button" data-cmd="insertUnorderedList">• لیست</button><button type="button" data-cmd="insertOrderedList">۱. لیست</button></div>
+    {{ form.draft_body }}{{ form.prefer_library }}
+    <div id="fm-rich-editor" class="fm-rich" contenteditable="{% if can_edit %}true{% else %}false{% endif %}" role="textbox" aria-multiline="true" aria-label="متن بخش">{{ draft_preview|safe }}</div>
+    <span class="helptext">متن با فرمت پایه ذخیره و قبل از انتشار در سرور پاکسازی امنیتی می‌شود.</span>
+   </div>
+   <h2 class="fm-step-title">۲. تصویر و لینک</h2>
+   <div class="fm-field"><label>آپلود تصویر جدید (اختیاری)</label>{{ form.draft_image }}<span class="helptext">JPG / PNG / WebP تا ۸ مگابایت؛ SVG اصلی سایت تغییر نمی‌کند.</span></div>
+   <div class="fm-field"><label>یا انتخاب تصویر از کتابخانه</label>{{ form.draft_asset }}<span class="helptext">برای استفاده از کتابخانه، تصویر جدید آپلود نکنید. <a href="{% url 'cms-media-library' %}" target="_blank">باز کردن کتابخانه ↗</a></span></div>
+   <details class="fm-advanced" style="margin-bottom:20px"><summary>انتخاب تصویری از تصاویر آماده سایت</summary>
+      <div class="fm-search"><input type="search" id="fm-asset-search" placeholder="جستجوی تصویر بر اساس نام یا دسته‌بندی" aria-label="جستجوی عکس‌های سایت" /></div>
+      <div class="fm-media-list" style="max-height:360px;overflow:auto" id="fm-media-picker">
+      {% for asset in library_items %}{% if asset.url %}<button type="button" class="fm-media-pick" data-media-id="{{ asset.pk }}" data-media-search="{{ asset.title }} {{ asset.category }}" title="{{ asset.title }}"><img src="{{ asset.url|admin_media }}" alt="{{ asset.alt_text }}" loading="lazy" style="width:100%;height:86px;object-fit:cover;border-radius:7px"/><span style="font-size:10px;color:#748093;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ asset.category }}</span></button>{% endif %}{% endfor %}
+      </div><p class="fm-legend">با کلیک روی عکس، آن را به‌عنوان تصویر این بخش انتخاب کنید. سپس دکمه انتشار را بزنید.</p>
+   </details>
+   <div class="fm-field"><label>متن جایگزین تصویر (Accessibility)</label>{{ form.draft_image_alt }}</div>
+   <div class="fm-form-grid">
+    <div class="fm-field"><label>متن دکمه</label>{{ form.draft_link_label }}</div>
+    <div class="fm-field"><label>لینک دکمه</label>{{ form.draft_link_url }}</div>
+   </div>
+   {% if section.kind == 'products' %}<h2 class="fm-step-title">۳. محصولات ویژه</h2>
+   <div class="fm-field"><label>محصولات منتخب</label>{{ form.draft_products }}<span class="helptext">برای انتخاب چند مورد، کلید Ctrl را نگه دارید. فقط محصولات منتشرشده نمایش داده می‌شوند.</span></div>{% else %}{{ form.draft_products.as_hidden }}{% endif %}
+   <details class="fm-advanced"><summary>تنظیمات پیشرفته این بخش (معمولاً نیازی به تغییر ندارد)</summary>
+    <div class="fm-form-grid" style="padding-top:17px">
+     <div class="fm-field"><label for="{{ form.name.id_for_label }}">نام بخش در پنل</label>{{ form.name }}</div>
+     <div class="fm-field"><label for="{{ form.kind.id_for_label }}">نوع نمایش</label>{{ form.kind }}</div>
+     <div class="fm-field"><label>ترتیب نمایش بخش</label>{{ form.sort_order }}</div>
+     <div class="fm-field" style="justify-content:center"><label>{{ form.draft_enabled }} نمایش این بخش</label></div>
+    </div>
+   </details>
+   {% if can_edit %}
+   <div class="fm-section-actions"><button type="submit" name="action" value="save" class="fm-link">ذخیره پیش‌نویس</button><button type="submit" name="action" value="publish" class="fm-link primary">انتشار تغییرات در سایت ✓</button><span class="fm-legend">تا زمان انتشار، بازدیدکنندگان تغییرات پیش‌نویس را نمی‌بینند.</span></div>
+   {% endif %}
+  </form>
+  {% if can_edit and section.is_published %}<form method="post" onsubmit="return confirm('این بخش از انتشار خارج شود؟')">{% csrf_token %}<input type="hidden" name="action" value="unpublish"><button class="fm-link warn" type="submit">لغو انتشار</button></form>{% endif %}
+ </div>
+ <aside class="fm-card">
+  <h2>پیش‌نمایش پیش‌نویس</h2>
+  {% if draft_image_url %}<img id="fm-preview-image" class="fm-banner-preview" src="{{ draft_image_url|admin_media }}" alt=""/>{% else %}<div class="fm-preview-box" id="fm-preview-no-image">تصویر اصلی صفحه تا زمانی که تصویر جدیدی انتخاب نشود، حفظ می‌شود.</div><img id="fm-preview-image" class="fm-banner-preview" style="display:none" alt=""/>{% endif %}
+  <h3 id="fm-preview-title">{{ section.draft_title|default:section.name }}</h3>
+  <div id="fm-preview-text" class="fm-preview-box">{{ draft_preview|safe }}</div>
+  <p class="fm-legend">این پیش‌نمایش محتوای بخش است، نه شبیه‌سازی کامل صفحه Next.js. برای دیدن نسخه منتشرشده، صفحه سایت را باز کنید.</p>
+  <a class="fm-link secondary" target="_blank" rel="noopener noreferrer" href="{{ live_url }}">نمایش صفحه اصلی سایت ↗</a>
+  <div style="margin-top:24px;border-top:1px solid #edf0f3;padding-top:18px"><h3>وضعیت انتشار</h3><p>{% if section.published_at %}آخرین انتشار: {{ section.published_at|date:'Y/m/d H:i' }}{% else %}هنوز این بخش منتشر نشده است.{% endif %}</p><p class="fm-legend">«ذخیره پیش‌نویس» نسخه منتشرشده فعلی را تغییر نمی‌دهد.</p></div>
+ </aside>
+</div>
+{% if section.kind == 'gallery' or section.kind == 'cards' or section.kind == 'hero' or section.kind == 'text' %}
+<div class="fm-card" style="margin-top:18px">
+ <h2>تصاویر بیشتر این بخش</h2>
+ <p>می‌توانید چند تصویر به بخش اضافه کنید؛ ابتدا تصاویر را ثبت کنید و سپس از دکمه «انتشار در سایت» در بالا استفاده کنید.</p>
+ {% if images %}
+ <form method="post">{% csrf_token %}<input type="hidden" name="action" value="order-images" />
+ <div class="fm-file-list" id="fm-gallery-sortable">
+ {% for item in images %}<div class="fm-file-item" draggable="{% if can_edit %}true{% else %}false{% endif %}" data-gallery-id="{{ item.pk }}">
+  {% if item.url %}<img src="{{ item.url|admin_media }}" alt="{{ item.alt_text }}"/>{% endif %}
+  <p style="font-size:12px">{{ item.caption|default:'بدون توضیح' }}</p>
+  <label>ترتیب <input type="number" min="0" max="10000" name="order-{{ item.id }}" value="{{ item.sort_order }}" /></label>
+  {% if can_edit %}<button type="submit" form="fm-delete-{{ item.id }}" class="fm-link warn" style="margin-top:8px">حذف از پیش‌نویس</button>{% endif %}
+ </div>{% endfor %}
+ </div>
+ {% if can_edit %}<button type="submit" class="fm-link" style="margin-top:14px">ذخیره ترتیب تصاویر (با کشیدن کارت‌ها)</button>{% endif %}
+ </form>
+ {% for item in images %}<form id="fm-delete-{{ item.id }}" method="post" onsubmit="return confirm('این عکس از پیش‌نویس حذف شود؟')">{% csrf_token %}<input type="hidden" name="action" value="delete-image"><input type="hidden" name="image_id" value="{{ item.id }}"></form>{% endfor %}
+ {% endif %}
+ {% if can_edit %}<h3 style="margin-top:24px">افزودن تصویر جدید</h3>
+ <form method="post" enctype="multipart/form-data" class="fm-form-grid">{% csrf_token %}<input type="hidden" name="action" value="add-image" />
+  <div class="fm-field"><label>فایل تصویر</label>{{ upload_form.image }}</div>
+  <div class="fm-field"><label>یا از کتابخانه تصاویر</label>{{ upload_form.library_asset }}</div>
+  <div class="fm-field"><label>عنوان تصویر</label>{{ upload_form.caption }}</div>
+  <div class="fm-field"><label>توضیح تصویر</label>{{ upload_form.alt_text }}</div>
+  <div class="fm-field"><label>ترتیب</label>{{ upload_form.sort_order }}</div>
+  {% if upload_form.errors %}<div class="fm-errors">{{ upload_form.errors }}</div>{% endif %}
+  <div class="fm-field"><button type="submit" class="fm-link primary">اضافه کردن عکس</button></div>
+ </form>{% endif %}
+</div>
+{% endif %}
+<script>
+(function(){
+ const form=document.getElementById('fm-main-editor'),editor=document.getElementById('fm-rich-editor'),hidden=document.getElementById('id_draft_body');
+ if(!form||!editor||!hidden)return;
+ form.addEventListener('submit',()=>hidden.value=editor.innerHTML);
+ editor.addEventListener('input',()=>{const preview=document.getElementById('fm-preview-text');if(preview)preview.textContent=editor.textContent||''});
+ document.querySelectorAll('[data-cmd]').forEach(button=>button.addEventListener('click',()=>{editor.focus();document.execCommand(button.dataset.cmd,false,null);hidden.value=editor.innerHTML}));
+ const title=document.getElementById('id_draft_title');if(title)title.addEventListener('input',()=>{document.getElementById('fm-preview-title').textContent=title.value});
+ document.querySelectorAll('[data-media-id]').forEach(button=>button.addEventListener('click',()=>{const picker=document.getElementById('id_draft_asset');if(!picker)return;picker.value=button.dataset.mediaId;const pref=document.getElementById('id_prefer_library');if(pref)pref.value='1';const img=document.getElementById('fm-preview-image');const tile=button.querySelector('img');if(img&&tile){img.src=tile.src;img.style.display='block';}document.querySelectorAll('[data-media-id]').forEach(b=>b.classList.remove('fm-pick-active'));button.classList.add('fm-pick-active');}));
+ const sourceSelect=document.getElementById('id_draft_asset');if(sourceSelect)sourceSelect.addEventListener('change',()=>{const pref=document.getElementById('id_prefer_library');if(pref)pref.value='1'});
+ const filter=document.getElementById('fm-asset-search');if(filter)filter.addEventListener('input',()=>{const value=filter.value.trim().toLocaleLowerCase('fa-IR');document.querySelectorAll('[data-media-search]').forEach(node=>node.classList.toggle('fm-hide',!node.dataset.mediaSearch.toLocaleLowerCase('fa-IR').includes(value)));});
+ const tiles=document.getElementById('fm-gallery-sortable');if(tiles){let active=null;tiles.querySelectorAll('[data-gallery-id]').forEach(card=>{card.style.cursor='grab';card.addEventListener('dragstart',()=>{active=card;card.style.opacity='.5'});card.addEventListener('dragend',()=>{card.style.opacity='1';active=null});card.addEventListener('dragover',e=>e.preventDefault());card.addEventListener('drop',e=>{e.preventDefault();if(!active||active===card)return;const nodes=[...tiles.children];if(nodes.indexOf(active)<nodes.indexOf(card))card.after(active);else card.before(active);[...tiles.children].forEach((node,index)=>{const input=node.querySelector('input[type=number]');if(input)input.value=(index*10).toString();})});});}
+ const upload=document.getElementById('id_draft_image');if(upload)upload.addEventListener('change',()=>{const file=upload.files[0],img=document.getElementById('fm-preview-image');if(!file||!img)return;const pref=document.getElementById('id_prefer_library');if(pref)pref.value='0';if(window.fmImageURL)URL.revokeObjectURL(window.fmImageURL);window.fmImageURL=URL.createObjectURL(file);img.src=window.fmImageURL;img.style.display='block';});
+})();
+</script>
+{% endblock %}
