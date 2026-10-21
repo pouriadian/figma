@@ -10,6 +10,7 @@ from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 from django.db import transaction, connection
 from django.utils import timezone
+from datetime import timedelta
 from communications.models import Announcement, Delivery
 
 
@@ -21,6 +22,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from django.db.models import Q
+        from sms_campaigns.services import process_pending
+        campaign_processed = process_pending(options['limit'])
+        Delivery.objects.filter(channel='sms',status='processing',updated_at__lt=timezone.now()-timedelta(minutes=5)).update(
+            status=Delivery.State.UNKNOWN,last_error='Worker claim expired; provider reconciliation required')
         processed = 0
         due = Q(announcement__scheduled_at__isnull=True) | Q(announcement__scheduled_at__lte=timezone.now())
         for _ in range(min(max(0, options['limit']), 500)):
@@ -34,19 +39,24 @@ class Command(BaseCommand):
                 if item is None:
                     break
                 item.attempts += 1
-                try:
-                    self.dispatch(item)
-                except Exception as exc:
-                    item.status = Delivery.State.FAILED
-                    item.last_error = str(exc)[:500]
-                item.processed_at = timezone.now()
-                item.save(update_fields=['status', 'attempts', 'last_error', 'provider_reference', 'processed_at', 'updated_at'])
-                processed += 1
+                item.status = Delivery.State.PROCESSING
+                item.save(update_fields=['status', 'attempts', 'updated_at'])
+                claimed_id = item.pk
+            # The lock is committed before external mail/SMS calls.
+            item = Delivery.objects.select_related('announcement', 'representative', 'representative__user').get(pk=claimed_id)
+            try:
+                self.dispatch(item)
+            except Exception as exc:
+                item.status = Delivery.State.FAILED
+                item.last_error = str(exc)[:500]
+            item.processed_at = timezone.now()
+            item.save(update_fields=['status', 'last_error', 'provider_reference', 'processed_at', 'updated_at'])
+            processed += 1
         for announcement in Announcement.objects.filter(status='queued'):
-            if not announcement.deliveries.filter(status='pending').exists():
+            if not announcement.deliveries.filter(status__in=['pending','processing']).exists():
                 announcement.status = Announcement.State.FINISHED
                 announcement.save(update_fields=['status', 'updated_at'])
-        self.stdout.write(f'Processed {processed} deliveries.')
+        self.stdout.write(f'Processed {processed} deliveries and {campaign_processed} campaign recipients.')
 
     def dispatch(self, item):
         representative = item.representative
@@ -80,18 +90,10 @@ class Command(BaseCommand):
                 item.status = Delivery.State.SKIPPED
                 item.last_error = 'Missing phone'
                 return
-            if not settings.SMS_WEBHOOK_URL:
-                item.status = Delivery.State.SKIPPED
-                item.last_error = 'SMS_WEBHOOK_URL not configured'
-                return
-            if not settings.SMS_WEBHOOK_URL.startswith('https://'):
-                raise ValueError('SMS provider endpoint must use HTTPS')
-            resp = requests.post(settings.SMS_WEBHOOK_URL, json={'to': representative.phone, 'message': ann.body},
-                                 headers={'Authorization': f'Bearer {settings.SMS_API_TOKEN}'}, timeout=12)
-            resp.raise_for_status()
-            # Provider acknowledgement is not proof of handset delivery.
-            data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else {}
-            item.provider_reference = str(data.get('id', ''))[:150] if isinstance(data, dict) else ''
-            item.status = Delivery.State.ACCEPTED
+            from sms_campaigns.services import farazsms_send
+            result=farazsms_send(representative.phone,ann.body)
+            item.provider_reference=result.get('request_id','')[:150]
+            item.last_error=result.get('error','')
+            item.status={'submitted':Delivery.State.SUBMITTED,'unknown':Delivery.State.UNKNOWN}.get(result['state'],Delivery.State.FAILED)
             return
         raise ValueError('Unsupported channel')

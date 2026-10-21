@@ -44,6 +44,7 @@ MODULES = {
     'deliveries': 'communications.view_delivery',
     'users': 'accounts.view_user',
     'reports': 'analytics.view_trafficevent',
+    'sms': 'sms_campaigns.view_sms_results',
 }
 
 
@@ -67,8 +68,18 @@ class AdminMeView(APIView):
             'actions': {
                 'cms_edit': user.has_perm('content.edit_site_pages'),
                 'products_edit': user.has_perm('catalog.change_product'),
+                'products_add': user.has_perm('catalog.add_product'),
+                'products_delete': user.has_perm('catalog.delete_product'),
+                'category_add': user.has_perm('catalog.add_productcategory'),
                 'media_add': user.has_perm('content.add_mediaasset'),
+                'media_delete': user.has_perm('content.delete_mediaasset'),
                 'users_add': user.has_perm('accounts.add_user'),
+                'sms_manage': user.has_perm('sms_campaigns.manage_sms_campaigns') or user.groups.filter(name__in=['sms_campaign_managers','sms_campaign_administrators']).exists(),
+                'sms_approve': user.has_perm('sms_campaigns.approve_sms_campaign') or user.groups.filter(name='sms_campaign_administrators').exists(),
+                'sms_send': user.has_perm('sms_campaigns.send_sms_campaign') or user.groups.filter(name__in=['sms_campaign_managers','sms_campaign_administrators']).exists(),
+                'sales_import_approve': user.has_perm('sms_campaigns.approve_sales_import') or user.groups.filter(name='sms_campaign_administrators').exists(),
+                'reward_approve': user.has_perm('sms_campaigns.approve_sms_reward') or user.groups.filter(name='sms_campaign_administrators').exists(),
+                'reward_activate': user.has_perm('sms_campaigns.activate_sms_reward') or user.groups.filter(name='sms_campaign_administrators').exists(),
             },
         })
 
@@ -151,6 +162,15 @@ class ProductViewSet(StaffViewSet):
     serializer_class = ProductSerializer
     permission_prefix, model_name = 'catalog', 'product'
     search_fields = ['name', 'slug', 'sku', 'model']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        category_id = self.request.query_params.get('category', '').strip()
+        if not category_id:
+            return queryset
+        if not category_id.isdigit():
+            raise ValidationError({'category': 'شناسه دسته‌بندی نامعتبر است.'})
+        return queryset.filter(category_id=int(category_id))
 
     def perform_update(self, serializer):
         # When explicitly choosing a different original site asset, stop
@@ -426,6 +446,20 @@ class MediaViewSet(StaffViewSet):
             return qs.filter(Q(category=page_key) | Q(category__startswith=page_key + ':'))
         return qs
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.sections.exists() or instance.content_sitesectionimage_set.exists():
+            return Response(
+                {'detail': 'این تصویر در محتوای سایت استفاده شده است. ابتدا تصویر بخش‌های وابسته را جایگزین کنید.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+        uploaded_image = instance.image
+        response = super().destroy(request, *args, **kwargs)
+        # Original /assets references belong to the frontend and must never be deleted here.
+        if uploaded_image:
+            uploaded_image.delete(save=False)
+        return response
+
 
 
 class ContentSerializer(serializers.ModelSerializer):
@@ -450,6 +484,24 @@ class ContentViewSet(StaffViewSet):
     serializer_class = ContentSerializer
     permission_prefix, model_name = 'content', 'contententry'
     search_fields = ['title', 'summary', 'slug']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        kind = self.request.query_params.get('kind', '').strip()
+        if kind:
+            if kind not in ContentEntry.Kind.values:
+                raise ValidationError({'kind': 'نوع محتوا نامعتبر است.'})
+            queryset = queryset.filter(kind=kind)
+        return queryset
+
+    def perform_update(self, serializer):
+        previous_asset = serializer.instance.existing_asset
+        changed_asset = serializer.validated_data.get('existing_asset')
+        has_new_upload = bool(serializer.validated_data.get('cover_image'))
+        item = serializer.save()
+        if changed_asset and changed_asset != previous_asset and not has_new_upload and item.cover_image:
+            item.cover_image = ''
+            item.save(update_fields=['cover_image', 'updated_at'])
 
 
 class PageSerializer(serializers.ModelSerializer):
@@ -664,6 +716,7 @@ class UserSerializer(serializers.ModelSerializer):
     # Preserve the frontend's expected created_at response field.
     created_at = serializers.DateTimeField(source='date_joined', read_only=True)
     password = serializers.CharField(write_only=True, required=False, min_length=10)
+    sms_access = serializers.ListField(child=serializers.ChoiceField(choices=['manager','viewer','administrator']), required=False)
 
     def validate_password(self, value):
         from django.contrib.auth.password_validation import validate_password
@@ -671,14 +724,25 @@ class UserSerializer(serializers.ModelSerializer):
         except DjangoValidationError as exc: raise serializers.ValidationError(exc.messages) from exc
         return value
 
+    def validate_sms_access(self,value):
+        if len(value)>1:raise serializers.ValidationError('برای هر حساب فقط یک سطح دسترسی پیامک انتخاب کنید.')
+        return value
+
+    def to_representation(self, instance):
+        data=super().to_representation(instance)
+        names={'sms_campaign_managers':'manager','sms_campaign_viewers':'viewer','sms_campaign_administrators':'administrator'}
+        data['sms_access']=[names[group.name] for group in instance.groups.filter(name__in=names)]
+        return data
+
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 'email', 'phone', 'role',
-                  'is_active', 'is_staff', 'password', 'created_at']
+                  'is_active', 'is_staff', 'password', 'created_at', 'sms_access']
         read_only_fields = ['id', 'is_staff', 'created_at']
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+        sms_access = validated_data.pop('sms_access', [])
         if not password:
             raise ValidationError({'password': 'برای حساب جدید رمز عبور لازم است.'})
         role = validated_data.get('role', 'representative')
@@ -689,6 +753,8 @@ class UserSerializer(serializers.ModelSerializer):
                                                 is_staff=(role != 'representative'), **validated_data)
             group = Group.objects.filter(name=role).first()
             if group: instance.groups.set([group])
+            else: instance.groups.clear()
+            self._set_sms_access(instance, sms_access)
         return instance
 
     def update(self, instance, validated_data):
@@ -701,14 +767,28 @@ class UserSerializer(serializers.ModelSerializer):
         if role == 'admin' and not actor.is_superuser:
             raise PermissionDenied('فقط مدیر ارشد می‌تواند نقش مدیر اختصاص دهد')
         password = validated_data.pop('password', None)
+        sms_access = validated_data.pop('sms_access', None)
         with transaction.atomic():
             for key, value in validated_data.items(): setattr(instance, key, value)
             instance.is_staff = (instance.role != 'representative') or instance.is_superuser
             if password: instance.set_password(password)
             instance.save()
             group = Group.objects.filter(name=role).first()
-            if group and not instance.is_superuser: instance.groups.set([group])
+            if not instance.is_superuser:
+                sms_groups = list(Group.objects.filter(name__in={'sms_campaign_managers','sms_campaign_viewers','sms_campaign_administrators'}))
+                instance.groups.set(([group] if group else []) + [x for x in sms_groups if x in instance.groups.all()])
+            if sms_access is not None: self._set_sms_access(instance, sms_access)
         return instance
+
+    @staticmethod
+    def _set_sms_access(instance, access):
+        sms_groups = {'sms_campaign_managers', 'sms_campaign_viewers', 'sms_campaign_administrators'}
+        instance.groups.remove(*Group.objects.filter(name__in=sms_groups))
+        names = {'manager':'sms_campaign_managers','viewer':'sms_campaign_viewers','administrator':'sms_campaign_administrators'}
+        instance.groups.add(*Group.objects.filter(name__in=[names[x] for x in access]))
+        if access and not instance.is_staff:
+            instance.is_staff=True
+            instance.save(update_fields=['is_staff'])
 
 
 class UserViewSet(StaffViewSet):
@@ -727,6 +807,9 @@ class ManagerDashboardView(APIView):
         except ValueError: days = 30
         if days not in (7, 30, 90):
             return Response({'detail': 'بازه باید ۷، ۳۰ یا ۹۰ روز باشد.'}, status=400)
+        category_id = request.query_params.get('category', '').strip()
+        if category_id and (not category_id.isdigit() or not ProductCategory.objects.filter(pk=category_id).exists()):
+            return Response({'detail': 'شناسه دسته‌بندی نامعتبر است.'}, status=400)
         now = timezone.now()
         today = timezone.localdate(now)
         since_day = today - timedelta(days=days - 1)
@@ -747,24 +830,35 @@ class ManagerDashboardView(APIView):
             ]
             visits = sum(x['views'] for x in trend)
             popular_pages = list(traffic.filter(kind='page_view').values('path').annotate(views=Count('id')).order_by('-views')[:5])
-            popular_products = list(traffic.filter(kind='product_view', product__isnull=False)
+        else:
+            trend, visits, popular_pages, popular_products, top_product_series = [], None, [], [], []
+        # Product managers need product-view charts even when they do not have
+        # permission to inspect site-wide analytics or popular pages.
+        if can('catalog.view_product'):
+            product_traffic = TrafficEvent.objects.filter(
+                occurred_at__gte=since, kind='product_view', product__isnull=False,
+            )
+            if category_id:
+                product_traffic = product_traffic.filter(product__category_id=int(category_id))
+            popular_products = list(product_traffic
                                     .values('product_id', 'product__name', 'product__slug')
                                     .annotate(views=Count('id')).order_by('-views')[:8])
-            # Series for selected top products; actual view events, never invented statistics.
-            product_ids = [x['product_id'] for x in popular_products[:5]]
-            product_group = (traffic.filter(kind='product_view', product_id__in=product_ids)
+            # Series use accepted product-view events, never the legacy counter.
+            product_ids = [item['product_id'] for item in popular_products[:5]]
+            product_group = (product_traffic.filter(product_id__in=product_ids)
                              .annotate(day=TruncDate('occurred_at'))
                              .values('product_id', 'day').annotate(n=Count('id')))
             product_daily = defaultdict(dict)
-            for item in product_group: product_daily[item['product_id']][str(item['day'])] = item['n']
+            for item in product_group:
+                product_daily[item['product_id']][str(item['day'])] = item['n']
             top_product_series = [
-                {'product_id': p['product_id'], 'name': p['product__name'], 'views': p['views'],
-                 'data': [product_daily[p['product_id']].get((since_day + timedelta(days=i)).isoformat(), 0)
+                {'product_id': product['product_id'], 'name': product['product__name'], 'views': product['views'],
+                 'data': [product_daily[product['product_id']].get((since_day + timedelta(days=i)).isoformat(), 0)
                           for i in range(days)]}
-                for p in popular_products[:5]
+                for product in popular_products[:5]
             ]
         else:
-            trend, visits, popular_pages, popular_products, top_product_series = [], None, [], [], []
+            popular_products, top_product_series = [], []
         if can('crm.view_inquiry'):
             qs = Inquiry.objects.all()
             inquiry_status = list(qs.filter(created_at__gte=since).values('status').annotate(count=Count('id')))

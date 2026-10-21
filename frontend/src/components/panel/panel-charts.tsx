@@ -16,14 +16,17 @@ export function TrafficChart({trend}:{trend:TrendPoint[]}){
  const ticks=[0,.25,.5,.75,1];
  const count=trend.length;const step=width/Math.max(count,1);
  const poly=trend.map((t,i)=>`${i*step+step/2},${padTop+chartHeight-t.views/max*chartHeight}`).join(' ');
+ const area=`${step/2},${padTop+chartHeight} ${poly} ${width-step/2},${padTop+chartHeight}`;
  const labels=trend.filter((_,i)=>i%Math.max(1,Math.ceil(count/10))===0);
  return <div className="fm-traffic-wrapper" dir="ltr">
   <div className="fm-chart-y-labels" dir="rtl">{[...ticks].reverse().map(t=><span key={t}>{persian(Math.round(max*t))}</span>)}</div>
   <div className="fm-traffic-plot"><svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-label="نمودار بازدیدهای روزانه و بازدید محصولات" role="img">
-    {ticks.map(t=><line key={t} x1={0} y1={padTop+chartHeight-t*chartHeight} x2={width} y2={padTop+chartHeight-t*chartHeight} stroke="#e7e9f3" strokeDasharray="5 5"/>)}
-    {trend.map((v,i)=>{const x=i*step+step*.17;const y=padTop+chartHeight-(v.views/max*chartHeight);return <rect key={v.date} x={x} y={y} width={Math.max(1,step*.66)} height={padTop+chartHeight-y} rx={2} fill={active===i?'#dd9ea7':'#f4e6e9'} opacity={.9}/>})}
-    <polyline points={poly} fill="none" stroke="#ab3948" strokeWidth={2.8} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"/>
-    {trend.map((v,i)=><circle key={`dot-${v.date}`} cx={i*step+step/2} cy={padTop+chartHeight-v.views/max*chartHeight} r={active===i?5.8:3.3} fill="#fff" stroke="#ab3948" strokeWidth={2.4} vectorEffect="non-scaling-stroke"><title>{`${v.date}: ${v.views} بازدید`}</title></circle>)}
+    <defs><linearGradient id="fm-traffic-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#b23b4a" stopOpacity=".16"/><stop offset="100%" stopColor="#b23b4a" stopOpacity="0"/></linearGradient></defs>
+    {ticks.map(t=><line key={t} x1={0} y1={padTop+chartHeight-t*chartHeight} x2={width} y2={padTop+chartHeight-t*chartHeight} stroke="#e8e9ed" strokeDasharray="3 7"/>)}
+    <polygon points={area} fill="url(#fm-traffic-area)"/>
+    {trend.map((v,i)=>{const x=i*step+step*.31;const y=padTop+chartHeight-(v.products/max*chartHeight);return <rect key={v.date} x={x} y={y} width={Math.max(1,step*.38)} height={padTop+chartHeight-y} rx={Math.min(5,step*.19)} fill={active===i?'#7771c8':'#d9d6f1'} opacity={active===i?1:.88}/>})}
+    <polyline points={poly} fill="none" stroke="#a83242" strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"/>
+    {trend.map((v,i)=><circle key={`dot-${v.date}`} cx={i*step+step/2} cy={padTop+chartHeight-v.views/max*chartHeight} r={active===i?5.8:3.3} fill="#fff" stroke="#a83242" strokeWidth={2.4} vectorEffect="non-scaling-stroke"><title>{`${v.date}: ${v.views} بازدید`}</title></circle>)}
     {trend.map((v,i)=><rect key={`touch-${v.date}`} x={i*step} y={0} width={step} height={height} fill="transparent" onMouseEnter={()=>setActive(i)} onMouseLeave={()=>setActive(null)} onFocus={()=>setActive(i)} tabIndex={0}><title>{`${v.date}: ${v.views} بازدید، ${v.products} بازدید محصول`}</title></rect>)}
   </svg><div className="fm-chart-xlabels" dir="ltr">{labels.map(p=><span key={p.date}>{new Date(p.date+'T12:00:00').toLocaleDateString('fa-IR',{month:'short',day:'numeric'})}</span>)}</div></div>
   {active!==null&&trend[active]&&<div className="fm-chart-tooltip" dir="rtl"><strong>{trend[active].date}</strong><span>{persian(trend[active].views)} بازدید سایت</span><span>{persian(trend[active].products)} بازدید محصول</span></div>}

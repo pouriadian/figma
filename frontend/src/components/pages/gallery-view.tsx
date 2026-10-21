@@ -1,6 +1,6 @@
-import Image from 'next/image';
 import {SiteShell} from '@/components/layout/site-shell';
-import {Container,SectionTitle} from '@/components/ui/brand-ui';
+import {Container} from '@/components/ui/brand-ui';
+import {PageIntro} from '@/components/sections/page-intro';
 import {EditorialGallery} from '@/components/sections/editorial-gallery';
 import {asset} from '@/lib/assets';
 import {getContent} from '@/lib/api';
@@ -24,13 +24,10 @@ export async function GalleryView() {
       : entries.length ? entries.map(e => ({src:e.image,title:e.title}))
         : asset.interiors.map((src,i) => ({src,title:titles[i]}));
   return <SiteShell>
+    <PageIntro title={gallery?.title||hero?.title||'گالری تصاویر'} subtitle="FAROMID GALLERY" description="نگاهی به فضاها و پروژه‌هایی که با محصولات فرامید شکل گرفته‌اند." image={hero?.image||asset.interiors[0]} compact/>
     <section className="bg-[#f5f5f1] py-14 sm:py-20">
       <Container>
-        {hero?.image && <div className="relative mb-8 aspect-[16/5] min-h-[190px] overflow-hidden rounded-[22px]">
-          <Image src={hero.image} alt={hero.image_alt||hero.title||'بنر گالری'} fill sizes="100vw" className="object-cover"/>
-        </div>}
-        <SectionTitle title={gallery?.title||hero?.title||'پروژه‌ها'}/>
-        <EditorialGallery items={items}/>
+        <EditorialGallery items={items} zoomable pageSize={6}/>
       </Container>
     </section>
     {page?.sections.filter(s=>s.enabled!==false&&!['hero','gallery'].includes(s.key)).map(s=><CMSExtraBlock key={s.key} section={s}/>)}

@@ -28,7 +28,7 @@ export function HomeValues({content}: {content?:CMSSection}){
   const src=content?.image||'/assets/home/home-organizational-values.png';
   return <section className="w-full overflow-hidden bg-[#101014]" aria-label="ارزش‌های سازمانی">
     <a href={src} target="_blank" rel="noopener noreferrer" title="مشاهده تصویر ارزش‌های سازمانی با اندازه کامل" className="block w-full focus-visible:outline-offset-[-4px]">
-      <Image src={src} width={1595} height={712} sizes="100vw" alt={content?.image_alt||'ارزش‌های سازمانی فرامید: نوآوری، مسئولیت اجتماعی، اعتماد، مشتری‌مداری، خلاقیت، کیفیت و برنامه‌ریزی استراتژیک'} className="block h-auto w-full object-contain" />
+      <Image src={src} width={1587} height={713} sizes="100vw" alt={content?.image_alt||'ارزش‌های سازمانی فرامید: نوآوری، مسئولیت اجتماعی، اعتماد، مشتری‌مداری، خلاقیت، کیفیت و برنامه‌ریزی استراتژیک'} className="block h-auto w-full object-contain" />
     </a>
     {content?.body?.trim()&&<div className="mx-auto max-w-4xl px-5 py-7 text-center text-sm leading-8 text-white/85" dangerouslySetInnerHTML={{__html:content.body}}/>}
   </section>;
@@ -37,12 +37,22 @@ export function HomeValues({content}: {content?:CMSSection}){
 export async function HomeGallery({content}: {content?:CMSSection}){
  const entries=await getContent('gallery');
  const pictures=content?.images?.length?content.images.map(item=>({src:item.url,title:item.caption||item.alt})):content?.image?[{src:content.image,title:content.title||"گالری"}]:entries.length?entries.map(item=>({src:item.image,title:item.title})):asset.interiors.map((src,index)=>({src,title:galleryNames[index]}));
+ const useMosaic=pictures.length===6;
+ const mosaicSlots=[
+  'lg:col-span-5 lg:row-span-2',
+  'lg:col-span-3',
+  'lg:col-span-6',
+  'lg:col-span-3',
+  'lg:col-span-2',
+  'lg:col-span-4',
+ ];
+ const mosaicSizes=['36vw','22vw','43vw','22vw','15vw','30vw'];
  return <section className="bg-[#f5f5f1] py-16 sm:py-20"><Container>
   <SectionTitle title={content?.title||"گالری تصاویر"} action={{href:'/gallery',label:'بیشتر'}} />
-  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-    {pictures.map(({src,title},index)=><Link href="/gallery" key={src} className={`group relative block min-h-[245px] overflow-hidden rounded-[20px] bg-[#c8cbc6] sm:min-h-[290px] ${index===0?'lg:row-span-2 lg:min-h-[600px]':''}`} aria-label={title}>
-      <Image src={src} alt={title} fill sizes="(max-width:650px) 100vw, (max-width:1024px) 50vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.035]" />
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-black/65 to-transparent px-5 pt-16 pb-5 text-white"><span className="text-[12px] font-medium sm:text-sm">{title}</span><ArrowUpLeft size={17} className="shrink-0 transition-transform group-hover:-translate-x-1 group-hover:-translate-y-1" /></div>
+  <div dir="ltr" className={`grid grid-cols-2 auto-rows-[minmax(9rem,1fr)] gap-3 sm:gap-4 ${useMosaic?'lg:aspect-[2.2] lg:auto-rows-auto lg:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-rows-[1.2fr_1fr]':'lg:grid-cols-3'} lg:gap-5`}>
+    {pictures.map(({src,title},index)=><Link href="/gallery" key={src} className={`group relative block min-h-[10rem] overflow-hidden rounded-[3px] bg-[#c8cbc6] ${index===0?'row-span-2 min-h-[21rem]':''} ${useMosaic?`${mosaicSlots[index]||''} lg:min-h-0`:''}`} aria-label={title}>
+      <Image src={src} alt={title} fill sizes={useMosaic?`(max-width: 1024px) 50vw, ${mosaicSizes[index]||'30vw'}`:"(max-width:650px) 50vw, (max-width:1024px) 50vw, 33vw"} className="object-cover transition-transform duration-700 group-hover:scale-[1.025]" />
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-black/65 to-transparent px-4 pt-16 pb-4 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"><span className="text-[12px] font-medium sm:text-sm">{title}</span><ArrowUpLeft size={17} className="shrink-0 transition-transform group-hover:-translate-x-1 group-hover:-translate-y-1" /></div>
     </Link>)}
   </div>
  </Container></section>;
@@ -53,15 +63,14 @@ const HISTORY_TEXT='Since 1975 the Caspany family has pursued its entrepreneuria
 /** A vertical, image-first editorial composition that editors can update through CMS. */
 export function HomeHistory({content}: {content?:CMSSection}){
   return <section className="bg-white py-16 sm:py-24" aria-label="میراث فرامید">
-    <div className="mx-auto w-full max-w-[1340px] px-4 sm:px-7 lg:px-12">
-      <div className="mx-auto w-full overflow-hidden rounded-2xl bg-[#f6f5f2] sm:rounded-[28px]">
-        <Image src={content?.image||brand.homeHistoryPanels} width={1200} height={540}
-          alt={content?.image_alt||'نمایی از پانل‌های فرامید'} sizes="(max-width: 1340px) 100vw, 1244px"
-          className="block h-auto w-full object-contain" />
+    <div className="mx-auto w-full max-w-[1054px] px-4 sm:px-7 lg:px-9">
+      <div className="mx-auto w-full max-w-[982px]">
+        <Image src={brand.homeHistoryPanels} width={982} height={442}
+          alt={content?.image_alt||'نمایی از پانل‌های فرامید'} sizes="(max-width: 982px) calc(100vw - 2rem), 982px"
+          className="mx-auto block h-auto w-full object-contain" />
       </div>
-      <div className="mx-auto mt-10 max-w-[1000px] text-center sm:mt-14">
-        <span className="mx-auto mb-5 block h-[3px] w-12 rounded-full bg-[#ca1722]" aria-hidden="true"/>
-        <h2 dir="ltr" className="m-0 text-center font-serif text-[clamp(1.65rem,3.1vw,3.15rem)] font-medium leading-[1.45] tracking-[-.02em] text-[#252323]">
+        <div className="mx-auto mt-10 max-w-[1000px] text-center sm:mt-14">
+          <h2 dir="ltr" className="m-0 text-center font-sans text-[clamp(1.125rem,1.55vw,1.5rem)] font-bold leading-[1.45] tracking-[-.01em] text-[#252323]">
           {content?.title||HISTORY_TEXT}
         </h2>
         {content?.subtitle&&<p className="mt-5 text-center text-lg text-[#5d5753]">{content.subtitle}</p>}

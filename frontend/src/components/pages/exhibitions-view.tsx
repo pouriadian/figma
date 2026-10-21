@@ -1,6 +1,6 @@
-import Image from 'next/image';
 import {SiteShell} from '@/components/layout/site-shell';
-import {Container,SectionTitle} from '@/components/ui/brand-ui';
+import {Container} from '@/components/ui/brand-ui';
+import {PageIntro} from '@/components/sections/page-intro';
 import {EditorialGallery} from '@/components/sections/editorial-gallery';
 import {asset} from '@/lib/assets';
 import {getContent} from '@/lib/api';
@@ -20,12 +20,9 @@ export async function ExhibitionsView() {
       : entries.length ? entries.map(e=>({src:e.image,title:e.title}))
         : asset.exhibitions.map((src,i)=>({src,title:titles[i]}));
   return <SiteShell>
+    <PageIntro title={gallery?.title||hero?.title||'نمایشگاه‌ها'} subtitle="FAROMID EXHIBITIONS" description="نگاهی به حضور فرامید در نمایشگاه‌ها و رویدادهای تخصصی." image={hero?.image||asset.exhibitions[0]} compact/>
     <section className="bg-[#f5f5f1] py-14 sm:py-20"><Container>
-      {hero?.image && <div className="relative mb-8 aspect-[16/5] min-h-[190px] overflow-hidden rounded-[22px]">
-        <Image src={hero.image} alt={hero.image_alt||hero.title||'بنر نمایشگاه'} fill sizes="100vw" className="object-cover"/>
-      </div>}
-      <SectionTitle title={gallery?.title||hero?.title||'نمایشگاه‌ها'}/>
-      <EditorialGallery items={items}/>
+      <EditorialGallery items={items} zoomable pageSize={3}/>
     </Container></section>
     {page?.sections.filter(s=>s.enabled!==false&&!['hero','gallery'].includes(s.key)).map(s=><CMSExtraBlock key={s.key} section={s}/>)}
   </SiteShell>;

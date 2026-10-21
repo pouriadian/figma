@@ -2,9 +2,10 @@
 
 import {useEffect, useMemo, useState} from 'react';
 import {usePathname, useRouter} from 'next/navigation';
+import NextImage from 'next/image';
 import Link from 'next/link';
 import {
-  BarChart3, Boxes, BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight,
+  BarChart3, BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight,
   ClipboardList, ExternalLink, FileText, FolderOpen, Image, LayoutDashboard,
   LogOut, Menu, Megaphone, Package, PanelRightClose, PanelRightOpen,
   Rows3, Search, ShieldCheck, Users, X,
@@ -18,7 +19,6 @@ export const NAV:{href:string;label:string;module:string;icon:LucideIcon;group:s
   {href:'/panel/pages', label:'صفحات سایت', module:'pages', icon:FileText, group:'content'},
   {href:'/panel/media', label:'رسانه و تصاویر', module:'media', icon:Image, group:'content'},
   {href:'/panel/products', label:'محصولات', module:'products', icon:Package, group:'content'},
-  {href:'/panel/categories', label:'دسته‌بندی‌ها', module:'categories', icon:Boxes, group:'content'},
   {href:'/panel/content', label:'اخبار و گالری', module:'content', icon:FolderOpen, group:'content'},
   {href:'/panel/representatives', label:'نمایندگان', module:'representatives', icon:Users, group:'management'},
   {href:'/panel/inquiries', label:'درخواست‌ها', module:'inquiries', icon:ClipboardList, group:'management'},
@@ -26,6 +26,7 @@ export const NAV:{href:string;label:string;module:string;icon:LucideIcon;group:s
   {href:'/panel/announcements', label:'اطلاع‌رسانی', module:'announcements', icon:Megaphone, group:'management'},
   {href:'/panel/deliveries', label:'گزارش ارسال', module:'deliveries', icon:Rows3, group:'management'},
   {href:'/panel/reports', label:'گزارش‌ها و آمار', module:'reports', icon:BarChart3, group:'system'},
+  {href:'/panel/sms', label:'پیامک و پاداش فروش', module:'sms', icon:Megaphone, group:'management'},
   {href:'/panel/users', label:'کاربران و دسترسی‌ها', module:'users', icon:ShieldCheck, group:'system'},
 ];
 const GROUPS:Record<string,string>={overview:'نمای کلی',content:'محتوای سایت',management:'عملیات',system:'مدیریت سیستم'};
@@ -59,7 +60,8 @@ export function PanelShell({children}:{children:ReactNode}) {
     return()=>document.removeEventListener('keydown',handleKey);
   },[mobileOpen]);
   const menu=useMemo(()=>NAV.filter(n=>user?.modules[n.module]&&n.label.includes(search.trim())),[user,search]);
-  const current=([...NAV].reverse().find(n=>path===n.href||path.startsWith(n.href+'/')))?.label||'داشبورد';
+  const currentItem=([...NAV].reverse().find(n=>path===n.href||path.startsWith(n.href+'/')))||NAV[0];
+  const CurrentIcon=currentItem.icon;
   function toggleSidebar(){
     if(window.matchMedia('(max-width: 850px)').matches){setMobileOpen(v=>!v);return;}
     setCollapsed(v=>{const next=!v;try{window.localStorage.setItem(STORAGE_KEY,next?'1':'0')}catch{}return next});
@@ -73,8 +75,8 @@ export function PanelShell({children}:{children:ReactNode}) {
     <aside className={`fm-sidebar ${mobileOpen?'fm-sidebar-open':''}`} aria-label="منوی مدیریت">
       <div className="fm-brand">
         <Link href="/panel" className="fm-brand-identity" title="داشبورد فرامید" aria-label="داشبورد فرامید">
-          <span className="fm-brand-logo"><img src="/assets/logo/logo.svg" alt="لوگوی فرامید"/></span>
-          <span className="fm-brand-mini" aria-hidden="true">F</span>
+          <span className="fm-brand-logo"><NextImage src="/assets/logo/logo.svg" alt="Faromid Group" width={273} height={72} priority/></span>
+          <span className="fm-brand-mini" aria-hidden="true"><svg viewBox="0 0 56 64" focusable="false"><path d="M10.3256 52.8549 0 47.0839V15.5725L27.5957 0l9.8687 5.771-27.1388 16.2137v30.8702Z" fill="currentColor"/><path d="M22.5698 39.3892V27.9389L49.069 12.5496l5.2999 3.0229v31.7862L27.1387 63.0228l-4.5689-2.839V53.679l21.7477-12.6412-.1828-14.0153Z" fill="#ec1c24"/></svg></span>
           <span className="fm-brand-caption">پنل مدیریت وب‌سایت</span>
         </Link>
         <button type="button" className="fm-mobile-close" aria-label="بستن منو" onClick={()=>setMobileOpen(false)}><X size={19}/></button>
@@ -95,7 +97,7 @@ export function PanelShell({children}:{children:ReactNode}) {
           </div>:null;
         })}
       </nav>
-      <div className="fm-sidebar-bottom"><div className="fm-user-avatar">{user.name.slice(0,1)}</div><div className="fm-user-meta"><strong>{user.name}</strong><span>{user.email}</span></div><button className="fm-logout" aria-label="خروج از پنل" title="خروج از پنل" onClick={logout}><LogOut size={18}/></button></div>
+      <div className="fm-sidebar-bottom"><div className="fm-user-avatar">{user.name.slice(0,1)}</div><div className="fm-user-meta"><strong>{user.name}</strong><span>{user.email}</span></div></div>
     </aside>
     <div className="fm-main-shell">
       <header className="fm-top-header">
@@ -104,9 +106,10 @@ export function PanelShell({children}:{children:ReactNode}) {
             <span className="fm-desktop-toggle-icon">{collapsed?<PanelRightOpen size={22}/>:<PanelRightClose size={22}/>}</span>
             <Menu size={21} className="fm-mobile-toggle-icon"/>
           </button>
-          <div><h1>{path==='/panel'?'داشبورد مدیریت فرامید':current}</h1><p>{path==='/panel'?'نمای کلی عملکرد وب‌سایت':'مدیریت آسان اطلاعات فرامید'}</p></div>
+          <span className="fm-page-title-mark" aria-hidden="true"><CurrentIcon size={17}/></span>
+          <div className="fm-page-title-copy"><span className="fm-page-title-eyebrow">FAROMID <i>/</i> PANEL</span><h1>{path==='/panel'?'داشبورد مدیریت فرامید':currentItem.label}</h1><p>{path==='/panel'?'نمای کلی عملکرد وب‌سایت':'مدیریت آسان اطلاعات فرامید'}</p></div>
         </div>
-        <div className="fm-top-tools"><span className="fm-date"><CalendarDays size={16}/>{new Intl.DateTimeFormat('fa-IR',{dateStyle:'medium'}).format(new Date())}</span><Link href="/" className="fm-icon-control" title="مشاهده سایت" target="_blank" aria-label="مشاهده سایت"><ExternalLink size={18}/></Link><span className="fm-top-avatar">{user.name.slice(0,1)}</span></div>
+        <div className="fm-top-tools"><div className="fm-header-utility"><span className="fm-date"><CalendarDays size={15}/>{new Intl.DateTimeFormat('fa-IR',{dateStyle:'medium'}).format(new Date())}</span><Link href="/" className="fm-site-link" target="_blank" rel="noreferrer"><ExternalLink size={15}/><span>مشاهده سایت</span></Link></div><div className="fm-top-account"><span className="fm-top-user"><span className="fm-top-avatar">{user.name.slice(0,1)}</span><span className="fm-top-user-name">{user.name}</span></span><button type="button" className="fm-logout fm-top-logout" aria-label="خروج از پنل" title="خروج از پنل" onClick={logout}><LogOut size={16}/></button></div></div>
       </header>
       <main id="panel-main" className="fm-panel-content">{children}</main>
     </div>

@@ -60,7 +60,7 @@ function DesktopHomeHero({content}: {content?:CMSSection}) {
         width={472}
         height={360}
         priority
-        className="faromid-hero-stripes absolute top-[30.6%] left-[4.4%] h-auto w-[27.6%] select-none"
+        className="faromid-hero-stripes faromid-hero-stripes--desktop absolute top-[30.6%] left-[4.4%] h-auto w-[27.6%] select-none"
       />
       <h1
         className="absolute top-[80.6%] left-[6.25%] m-0 w-[23.5%] text-center text-[clamp(11px,1.12vw,19px)] leading-[1.9] font-bold text-white"
@@ -101,7 +101,7 @@ function MobileHomeHero({content}: {content?:CMSSection}) {
         width={472}
         height={360}
         priority
-        className="faromid-hero-stripes absolute bottom-[140px] left-1/2 h-auto w-[min(60vw,285px)] -translate-x-1/2 select-none sm:bottom-[150px] sm:w-[300px]"
+        className="faromid-hero-stripes faromid-hero-stripes--mobile absolute bottom-[140px] left-1/2 h-auto w-[min(60vw,285px)] -translate-x-1/2 select-none sm:bottom-[150px] sm:w-[300px]"
       />
       <div className="absolute right-[8%] bottom-[34px] left-[8%] mx-auto max-w-[460px]">
         <span aria-hidden="true" className="absolute -top-3 right-0 h-6 w-7 border-t-2 border-r-2 border-[#ec1c24]" />

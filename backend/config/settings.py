@@ -19,7 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',
     'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles',
     'rest_framework', 'rest_framework_simplejwt', 'rest_framework_simplejwt.token_blacklist', 'corsheaders',
-    'accounts.apps.AccountsConfig', 'partners.apps.PartnersConfig', 'catalog', 'crm', 'communications', 'content', 'analytics',
+    'accounts.apps.AccountsConfig', 'partners.apps.PartnersConfig', 'catalog', 'crm', 'communications', 'content', 'analytics', 'sms_campaigns',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -131,6 +131,11 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', '1') == '1'
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Faromid <no-reply@faromid.com>')
 SMS_WEBHOOK_URL = os.getenv('SMS_WEBHOOK_URL', '')
 SMS_API_TOKEN = os.getenv('SMS_API_TOKEN', '')
+SMS_MODE = os.getenv('SMS_MODE', 'mock').strip().lower()
+FARAZSMS_API_KEY = os.getenv('FARAZSMS_API_KEY', '')
+FARAZSMS_BASE_URL = os.getenv('FARAZSMS_BASE_URL', 'https://api.iranpayamak.com').rstrip('/')
+FARAZSMS_SENDER_LINE = os.getenv('FARAZSMS_SENDER_LINE', '')
+SMS_BULK_BATCH_SIZE = int(os.getenv('SMS_BULK_BATCH_SIZE', '50'))
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True

@@ -62,8 +62,13 @@ class Announcement(TimestampedModel):
 class Delivery(TimestampedModel):
     class State(models.TextChoices):
         PENDING = 'pending', 'در انتظار'
+        PROCESSING = 'processing', 'در حال پردازش'
+        SUBMITTED = 'submitted', 'پذیرفته‌شده برای ارسال'
+        DELIVERED = 'delivered', 'تحویل‌شده'
         ACCEPTED = 'accepted', 'پذیرفته‌شده توسط سرویس'
         FAILED = 'failed', 'ناموفق'
+        CANCELED = 'canceled', 'لغوشده'
+        UNKNOWN = 'unknown', 'نیازمند تطبیق وضعیت'
         SKIPPED = 'skipped', 'ردشده/بدون آدرس'
         SIMULATED = 'simulated', 'شبیه‌سازی (توسعه)'
 

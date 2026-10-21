@@ -12,7 +12,7 @@ export async function generateMetadata(){
 export default async function CollaborationPage(){
   const page=await getSitePage('collaboration');const hero=getSection(page,'hero');const intro=getSection(page,'intro');
   return <SiteShell>
-    <PageIntro title={hero?.title||"همکاری با فرامید"} image={hero?.image||asset.dealership}/>
+    <PageIntro title={hero?.title||"همکاری با فرامید"} subtitle="FAROMID PARTNERSHIP" description="برای آغاز یک همکاری حرفه‌ای و پایدار با گروه فرامید همراه شوید." image={hero?.image||asset.dealership}/>
     <section className="bg-[#f5f5f1] py-14 sm:py-20"><Container>
       <div className="mx-auto max-w-[760px] rounded-[26px] border border-[#e4e7e1] bg-white p-6 sm:p-10">
         <SectionTitle title={intro?.title||"درخواست همکاری سازمانی"}/>

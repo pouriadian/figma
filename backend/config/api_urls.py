@@ -14,6 +14,7 @@ urlpatterns = [
     path('manage/me/', AdminMeView.as_view()),
     path('manage/dashboard/', ManagerDashboardView.as_view()),
     path('manage/', include(manager_router.urls)),
+    path('manage/', include('sms_campaigns.urls')),
     path('auth/token/', LoginView.as_view()),
     path('auth/staff-token/', StaffLoginView.as_view(), name='panel-staff-login'),
     path('auth/refresh/', TokenRefreshView.as_view()),

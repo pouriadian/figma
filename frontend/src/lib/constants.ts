@@ -1,21 +1,18 @@
 export const SITE_TITLE = 'فرامید | Faromid Group';
 export const SITE_DESCRIPTION = 'گروه تولیدی فرامید؛ تولیدکننده MDF ملامینه، سینکرونایز، فوق برجسته و سوپرمات آنتی فینگر، محصولات و طراحی داخلی';
 
-/** Showroom address displayed on the contact page. */
+/** Sadat location displayed on the contact page. */
 export const CONTACT_SHOWROOM = {
-  label: 'دفتر نمایشگاه نیاوران',
-  address:
-    'نیاوران، نرسیده به میدان باهنر، خیابان ناطقیان، بن بست سادات پلاک ۵، طبقه اول',
-  lat: 35.8109353,
-  lng: 51.4702136,
-  directionsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    'نیاوران، خیابان ناطقیان، بن بست سادات پلاک 5، تهران',
-  )}`,
+  label: 'Sadat',
+  address: 'Tehran Province, Tajrish, Iran',
+  lat: 35.810932,
+  lng: 51.467497,
+  directionsUrl: 'https://www.google.com/maps/search/?api=1&query=35.810932%2C51.467497',
+  embedUrl: 'https://maps.google.com/maps?output=embed&hl=en&q=35.810932%2C51.467497&z=15',
 } as const;
 export const links = [
   { href: '/', label: 'صفحه اصلی' },
   { href: '/products', label: 'محصولات' },
-  { href: '/textures', label: 'تکسچر' },
   { href: '/gallery', label: 'گالری تصاویر' },
   { href: '/exhibitions', label: 'نمایشگاه ها' },
   { href: '/about', label: 'درباره ما' },
@@ -26,5 +23,6 @@ export const links = [
 ] as const;
 export const asPath = (text: string): string | undefined => {
   const key = text.replace(/\s+/g, ' ').trim();
-  return links.find(({label})=>label===key || (key === 'بافت' && label === 'تکسچر'))?.href;
+  if(key==='بافت'||key==='تکسچر')return '/products?by=texture';
+  return links.find(({label})=>label===key)?.href;
 };
