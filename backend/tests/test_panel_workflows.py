@@ -110,8 +110,13 @@ class AdminPanelWorkflowTests(APITestCase):
         }, format='json')
         self.assertEqual(created.status_code, 201, created.data)
 
+        preview = self.client.post(
+            f"/api/v1/manage/announcements/{created.data['id']}/preview/", {}, format='json'
+        )
+        self.assertEqual(preview.status_code, 200, preview.data)
         queued = self.client.post(
-            f"/api/v1/manage/announcements/{created.data['id']}/queue/", {}, format='json'
+            f"/api/v1/manage/announcements/{created.data['id']}/queue/",
+            {'preview_hash': preview.data['preview_hash']}, format='json'
         )
         self.assertEqual(queued.status_code, 200, queued.data)
         self.assertEqual(queued.data['status'], Announcement.State.QUEUED)

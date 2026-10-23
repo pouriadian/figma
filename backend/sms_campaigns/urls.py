@@ -1,5 +1,5 @@
 from django.urls import path
-from .api import SalesImportView, SalesImportApprovalView, RepresentativeFilterView, RepresentativeSelectionPreviewView, RepresentativeSalesSummaryView, CampaignListView, CampaignDetailView, CampaignActionView, CampaignRecipientsView, RewardView, SMSSettingsView, SMSUtilityView, DiscountRuleDetailView
+from .api import SalesImportView, SalesImportApprovalView, RepresentativeFilterView, RepresentativeSelectionPreviewView, RepresentativeSalesSummaryView, CampaignListView, CampaignDetailView, CampaignActionView, CampaignRecipientsView, RewardView, SMSSettingsView, SMSUtilityView, DiscountRuleDetailView, SMSPatternView, SMSCampaignOptionsView, SMSAudienceView
 
 urlpatterns = [
     path('sales/import-preview/', SalesImportView.as_view()),
@@ -11,6 +11,10 @@ urlpatterns = [
     path('sms/campaigns/<int:pk>/', CampaignDetailView.as_view()),
     path('sms/campaigns/<int:pk>/recipients/', CampaignRecipientsView.as_view()),
     path('sms/campaigns/<int:pk>/<str:action>/', CampaignActionView.as_view()),
+    path('sms/patterns/', SMSPatternView.as_view()),
+    path('sms/patterns/<int:pk>/<str:action>/', SMSPatternView.as_view()),
+    path('sms/campaign-options/', SMSCampaignOptionsView.as_view()),
+    path('sms/audiences/', SMSAudienceView.as_view()),
     path('rewards/', RewardView.as_view()),
     path('rewards/history/', RewardView.as_view()),
     path('rewards/<str:action>/', RewardView.as_view()),

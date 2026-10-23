@@ -1,5 +1,7 @@
 """Faromid platform settings. Public media is separate from private HR files."""
 import os
+import base64
+import hashlib
 from datetime import timedelta
 from pathlib import Path
 from dotenv import load_dotenv
@@ -12,6 +14,8 @@ if not SECRET_KEY:
     if not DEBUG:
         raise RuntimeError('DJANGO_SECRET_KEY is mandatory in production')
     SECRET_KEY = 'INSECURE-LOCAL-DEVELOPMENT-ONLY-CHANGE-ME'
+if not DEBUG and (len(SECRET_KEY) < 50 or 'CHANGE_ME' in SECRET_KEY.upper()):
+    raise RuntimeError('Production DJANGO_SECRET_KEY must be a unique random value of at least 50 characters')
 ALLOWED_HOSTS = [x.strip() for x in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,backend').split(',') if x.strip()]
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', 'http://localhost:3000').split(',') if x.strip()]
 
@@ -97,6 +101,8 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 8 * 1024 * 1024
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 100
 
 API_PROXY_SECRET = os.getenv('API_PROXY_SECRET', '')
+if not DEBUG and (len(API_PROXY_SECRET) < 32 or 'CHANGE_ME' in API_PROXY_SECRET.upper()):
+    raise RuntimeError('Production API_PROXY_SECRET must be a unique random value of at least 32 characters')
 CORS_ALLOWED_ORIGINS = [x.strip() for x in os.getenv('DJANGO_CORS_ORIGINS', 'http://localhost:3000').split(',') if x.strip()]
 CORS_ALLOW_CREDENTIALS = False
 REST_FRAMEWORK = {
@@ -135,6 +141,15 @@ SMS_MODE = os.getenv('SMS_MODE', 'mock').strip().lower()
 FARAZSMS_API_KEY = os.getenv('FARAZSMS_API_KEY', '')
 FARAZSMS_BASE_URL = os.getenv('FARAZSMS_BASE_URL', 'https://api.iranpayamak.com').rstrip('/')
 FARAZSMS_SENDER_LINE = os.getenv('FARAZSMS_SENDER_LINE', '')
+SMS_CONFIG_ENCRYPTION_KEY = os.getenv('SMS_CONFIG_ENCRYPTION_KEY', '')
+if not SMS_CONFIG_ENCRYPTION_KEY and DEBUG:
+    # Keep local development usable without committing a credential-encryption
+    # secret. Production must provide an independent key via the environment.
+    local_secret = os.getenv('DJANGO_SECRET_KEY', '')
+    if len(local_secret) >= 32 and 'CHANGE_ME' not in local_secret.upper():
+        SMS_CONFIG_ENCRYPTION_KEY = base64.urlsafe_b64encode(
+            hashlib.sha256(('faromid-local-sms-config:' + local_secret).encode('utf-8')).digest()
+        ).decode('ascii')
 SMS_BULK_BATCH_SIZE = int(os.getenv('SMS_BULK_BATCH_SIZE', '50'))
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SESSION_COOKIE_HTTPONLY = True
@@ -147,8 +162,9 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv('DJANGO_SECURE_SSL_REDIRECT', '1') == '1'
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000 if os.getenv('DJANGO_ENABLE_HSTS') == '1' else 0
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('DJANGO_ENABLE_HSTS') == '1'
+    hsts_enabled = os.getenv('DJANGO_ENABLE_HSTS', '1') == '1'
+    SECURE_HSTS_SECONDS = 31536000 if hsts_enabled else 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('DJANGO_HSTS_INCLUDE_SUBDOMAINS', '0') == '1'
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 

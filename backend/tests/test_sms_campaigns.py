@@ -10,7 +10,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from accounts.models import Representative, User
 from partners.models import RepresentativeProfile
-from sms_campaigns.models import SalesImportBatch, SalesSnapshot, DiscountRule, RepresentativeReward, SMSCampaign, SMSCampaignRecipient
+from sms_campaigns.models import SalesImportBatch, SalesSnapshot, DiscountRule, RepresentativeReward, SMSCampaign, SMSCampaignRecipient, SMSPattern
 from sms_campaigns.services import process_pending, farazsms_send, render_message
 
 
@@ -80,9 +80,11 @@ class SMSCampaignWorkflowTests(TestCase):
         self.assertEqual(approved.status_code,200)
         recipient=SMSCampaignRecipient.objects.get(campaign=campaign)
         self.assertEqual(recipient.rendered_message,'Hello فروشگاه نمونه')
-        self.client.post(f'/api/v1/manage/sms/campaigns/{campaign.pk}/send/',{},format='json')
         self.profile.sms_consent=False;self.profile.save()
-        self.assertEqual(process_pending(1),1)
+        with override_settings(SMS_MODE='live',FARAZSMS_API_KEY='test',FARAZSMS_SENDER_LINE='1000'):
+            queued=self.client.post(f'/api/v1/manage/sms/campaigns/{campaign.pk}/send/',{},format='json')
+            self.assertEqual(queued.status_code,200,queued.data)
+            self.assertEqual(process_pending(1),1)
         recipient.refresh_from_db();self.assertEqual(recipient.status,'canceled')
 
     def test_worker_commits_processing_claim_before_provider_call(self):
@@ -129,8 +131,13 @@ class SMSCampaignWorkflowTests(TestCase):
         args,kwargs=post.call_args
         self.assertEqual(args[0],'https://api.iranpayamak.com/ws/v1/sms/simple')
         self.assertEqual(kwargs['headers']['Api-Key'],'secret-key')
-        self.assertEqual(kwargs['json']['recipients'],['+989120000000'])
+        self.assertEqual(kwargs['json']['recipients'],['09120000000'])
         self.assertEqual(kwargs['json']['number_format'],'english')
+
+    def test_phone_normalization_uses_farazsms_local_format(self):
+        from sms_campaigns.services import normalize_phone
+        for value in ('09121234567','+989121234567','989121234567','00989121234567','9121234567','۰۹۱۲۱۲۳۴۵۶۷'):
+            self.assertEqual(normalize_phone(value),'09121234567')
 
     def test_unknown_message_variables_are_rejected(self):
         with self.assertRaises(ValueError):render_message('Hi {discount_code}',self.rep)
@@ -156,3 +163,80 @@ class SMSCampaignWorkflowTests(TestCase):
         self.assertEqual(result.status_code,200)
         recipient.refresh_from_db();self.assertEqual(recipient.status,'submitted')
         self.assertEqual(result.data['provider_checks'][0]['status'],'unconfirmed')
+
+    def test_selected_staff_campaign_previews_personalized_message_and_freezes_user(self):
+        self.grant('manage_sms_campaigns','approve_sms_campaign','send_sms_campaign','view_sms_results')
+        staff=User.objects.create_user(username='staff-one',email='staff-one@example.test',password='long-password-123',is_staff=True,
+            first_name='پوریا',last_name='محمدیان',phone='09121112222')
+        created=self.client.post('/api/v1/manage/sms/campaigns/',{'name':'اطلاعیه تعطیلی','message_template':'سلام %name%، امروز تعطیل است.',
+            'send_method':'keywords','filters':{'audience':'staff','user_ids':[staff.pk]}},format='json')
+        self.assertEqual(created.status_code,201,created.data)
+        campaign_id=created.data['id']
+        preview=self.client.post(f'/api/v1/manage/sms/campaigns/{campaign_id}/preview/',{},format='json')
+        self.assertEqual(preview.status_code,200,preview.data)
+        self.assertEqual(preview.data['count'],1)
+        self.assertEqual(preview.data['preview'][0]['message'],'سلام پوریا محمدیان، امروز تعطیل است.')
+        approved=self.client.post(f'/api/v1/manage/sms/campaigns/{campaign_id}/approve/',{},format='json')
+        self.assertEqual(approved.status_code,200,approved.data)
+        recipient=SMSCampaignRecipient.objects.get(campaign_id=campaign_id)
+        self.assertEqual(recipient.recipient_user,staff)
+        self.assertIsNone(recipient.representative)
+        self.assertEqual(recipient.attributes,{'name':'پوریا محمدیان'})
+
+    def test_representative_sales_campaign_uses_latest_selected_month_fields(self):
+        self.grant('manage_sms_campaigns','view_sms_results')
+        batch=SalesImportBatch.objects.create(sales_month=date(2026,9,1),created_by=self.user,state='approved')
+        SalesSnapshot.objects.create(representative=self.rep,sales_month=date(2026,9,1),net_sales_irr=Decimal('850000000'),completed_orders=9,import_batch=batch)
+        created=self.client.post('/api/v1/manage/sms/campaigns/',{'name':'گزارش فروش','message_template':'%name%، فروش شما %sales% ریال است.',
+            'send_method':'keywords','filters':{'audience':'representatives','representative_ids':[self.rep.pk],'sales_month':'2026-09'}},format='json')
+        self.assertEqual(created.status_code,201,created.data)
+        preview=self.client.post(f"/api/v1/manage/sms/campaigns/{created.data['id']}/preview/",{},format='json')
+        self.assertEqual(preview.status_code,200,preview.data)
+        self.assertEqual(preview.data['sales_month'],'2026-09')
+        self.assertEqual(preview.data['preview'][0]['message'],'فروشگاه نمونه، فروش شما 850000000 ریال است.')
+        self.assertEqual(preview.data['count'],1)
+
+    def test_keywords_worker_sends_batch_with_per_recipient_attributes(self):
+        campaign=SMSCampaign.objects.create(name='Keywords',message_template='سلام %name%، فروش %sales%',send_method='keywords',
+            status='queued',created_by=self.user)
+        recipient=SMSCampaignRecipient.objects.create(campaign=campaign,representative=self.rep,recipient_name=self.rep.contact_name,
+            phone_number=self.rep.phone,rendered_message='سلام فروشگاه نمونه، فروش 100',attributes={'name':'فروشگاه نمونه','sales':'100'})
+        response=type('Response',(),{'status_code':201,'content':b'{"status":"success","data":88}',
+            'json':lambda self:{'status':'success','data':88},'raise_for_status':lambda self:None})()
+        with override_settings(SMS_MODE='live',FARAZSMS_API_KEY='secret-key',FARAZSMS_SENDER_LINE='1000'):
+            with patch('sms_campaigns.services.requests.post',return_value=response) as post:
+                process_pending(10)
+        args,kwargs=post.call_args
+        self.assertTrue(args[0].endswith('/ws/v1/sms/keywords'))
+        self.assertEqual(kwargs['json']['recipients'],[{'mobile':'09120000000','name':'فروشگاه نمونه','sales':'100'}])
+        recipient.refresh_from_db();self.assertEqual(recipient.status,'submitted');self.assertEqual(recipient.provider_request_id,'88')
+
+    def test_pattern_requires_remote_sync_and_explicit_approval(self):
+        self.grant('manage_sms_campaigns','approve_sms_campaign','view_sms_results')
+        with patch('sms_campaigns.services.farazsms_create_pattern',return_value='PATTERN-1'):
+            created=self.client.post('/api/v1/manage/sms/patterns/',{'text':'سلام %name%','description':'نام‌دار',
+                'variables':[{'var':'name','source':'name','length':40,'type':'str'}],'category':255},format='json')
+        self.assertEqual(created.status_code,201,created.data)
+        pattern=SMSPattern.objects.get(code='PATTERN-1');self.assertEqual(pattern.state,'pending')
+        with patch('sms_campaigns.services.farazsms_get_pattern',return_value={'text':'سلام %name%','attributes':[{'name':'name'}]}):
+            synced=self.client.post(f'/api/v1/manage/sms/patterns/{pattern.pk}/sync/',{},format='json')
+        self.assertEqual(synced.status_code,200);self.assertTrue(synced.data['matches'])
+        blocked=self.client.post(f'/api/v1/manage/sms/patterns/{pattern.pk}/mark-approved/',{'provider_approved':True},format='json')
+        self.assertEqual(blocked.status_code,200,blocked.data)
+        pattern.refresh_from_db();self.assertEqual(pattern.state,'approved')
+
+    def test_pattern_sender_uses_registered_code_attributes_and_local_recipient(self):
+        from sms_campaigns.services import farazsms_send_pattern
+        pattern=SMSPattern.objects.create(code='PATTERN-SEND',text='سلام %name%',variables=[{'var':'name','source':'name','length':40,'type':'str'}],
+            state='approved',created_by=self.user)
+        response=type('Response',(),{'status_code':201,'content':b'{"status":"success","data":912}',
+            'json':lambda self:{'status':'success','data':912},'raise_for_status':lambda self:None})()
+        with override_settings(SMS_MODE='live',FARAZSMS_API_KEY='secret-key',FARAZSMS_SENDER_LINE='50002178584000'):
+            with patch('sms_campaigns.services.requests.post',return_value=response) as post:
+                result=farazsms_send_pattern('+989121234567',pattern,{'name':'پوریا'})
+        self.assertEqual(result,{'state':'submitted','request_id':'912'})
+        args,kwargs=post.call_args
+        self.assertTrue(args[0].endswith('/ws/v1/sms/pattern'))
+        self.assertEqual(kwargs['json']['code'],'PATTERN-SEND')
+        self.assertEqual(kwargs['json']['attributes'],{'name':'پوریا'})
+        self.assertEqual(kwargs['json']['recipient'],'09121234567')

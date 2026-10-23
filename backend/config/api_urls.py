@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView, TokenBlacklistView
 from accounts.api import LoginView, StaffLoginView, PortalProfileView, RepresentativeStatsView
 from catalog.api import ProductListView, ProductDetailView, CategoryListView
 from crm.api import InquiryCreateView, InquiryTrackingView, JobApplicationCreateView, PortalInquiryListCreateView
-from communications.api import PortalNotificationListView, PortalNotificationReadView
+from communications.api import PortalNotificationListView, PortalNotificationReadView, PanelNotificationListView, PanelNotificationReadView
 from content.api import ContentListView, ContentDetailView, PageSEOView, SitePageView
 from analytics.api import EventCreateView, DashboardStatsView
 from partners.api import PublicRepresentativeList
@@ -13,6 +13,8 @@ from management.api import router as manager_router, AdminMeView, ManagerDashboa
 urlpatterns = [
     path('manage/me/', AdminMeView.as_view()),
     path('manage/dashboard/', ManagerDashboardView.as_view()),
+    path('manage/notifications/', PanelNotificationListView.as_view()),
+    path('manage/notifications/<int:pk>/read/', PanelNotificationReadView.as_view()),
     path('manage/', include(manager_router.urls)),
     path('manage/', include('sms_campaigns.urls')),
     path('auth/token/', LoginView.as_view()),

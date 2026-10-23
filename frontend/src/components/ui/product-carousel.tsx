@@ -53,7 +53,7 @@ export function ModernProductCarousel({items=CATALOG_PRODUCTS,className=''}:Prop
       if(event.key==='ArrowLeft'){event.preventDefault();goTo(active+1);}
       if(event.key==='ArrowRight'){event.preventDefault();goTo(active-1);}
     }} className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-4 [scrollbar-width:none] [touch-action:pan-x_pan-y] sm:gap-5 [&::-webkit-scrollbar]:hidden">
-      {items.map(product=><div key={product.id} className="w-[min(76vw,310px)] shrink-0 snap-start sm:w-[min(44vw,315px)] lg:w-[calc((100%-60px)/4)]"><ProductCard product={product}/></div>)}
+      {items.map(product=><div key={product.id} className="w-[calc((100%_-_2rem)/3)] shrink-0 snap-start sm:w-[min(44vw,315px)] lg:w-[calc((100%-60px)/4)]"><ProductCard product={product} compact/></div>)}
     </div>
     <div className="mt-4 flex items-center justify-between gap-4">
       <div className="flex shrink-0 items-center gap-2" role="group" aria-label="کنترل محصولات">

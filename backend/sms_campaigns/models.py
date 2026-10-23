@@ -64,6 +64,24 @@ class RepresentativeReward(TimestampedModel):
         constraints = [models.UniqueConstraint(fields=['representative', 'sales_month'], name='sms_unique_reward_rep_month'), models.CheckConstraint(condition=Q(sales_month__day=1), name='sms_reward_month_is_first_day')]
 
 
+class SMSPattern(TimestampedModel):
+    class State(models.TextChoices):
+        PENDING = 'pending', 'نیازمند تأیید در FarazSMS'
+        APPROVED = 'approved', 'تأییدشده'
+        REVIEW = 'review', 'نیازمند همگام‌سازی مجدد'
+
+    code = models.CharField(max_length=80, unique=True)
+    text = models.TextField()
+    description = models.CharField(max_length=500, blank=True)
+    category = models.PositiveSmallIntegerField(default=255)
+    variables = models.JSONField(default=list)
+    state = models.CharField(max_length=12, choices=State.choices, default=State.PENDING, db_index=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='sms_patterns')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_sms_patterns')
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+
 class SMSCampaign(TimestampedModel):
     class State(models.TextChoices):
         DRAFT = 'draft', 'Draft'
@@ -75,6 +93,9 @@ class SMSCampaign(TimestampedModel):
     name = models.CharField(max_length=180)
     message_template = models.TextField()
     filters = models.JSONField(default=dict)
+    campaign_data = models.JSONField(default=dict, blank=True)
+    send_method = models.CharField(max_length=12, choices=[('simple', 'Simple'), ('keywords', 'Keywords'), ('pattern', 'Pattern')], default='simple')
+    pattern = models.ForeignKey(SMSPattern, on_delete=models.PROTECT, null=True, blank=True, related_name='campaigns')
     preview_snapshot = models.JSONField(default=list, blank=True)
     previewed_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=12, choices=State.choices, default=State.DRAFT, db_index=True)
@@ -98,9 +119,12 @@ class SMSCampaignRecipient(TimestampedModel):
         CANCELED = 'canceled', 'Canceled'
         UNKNOWN = 'unknown', 'Unknown'
     campaign = models.ForeignKey(SMSCampaign, on_delete=models.CASCADE, related_name='recipients')
-    representative = models.ForeignKey('accounts.Representative', on_delete=models.PROTECT, related_name='sms_campaign_recipients')
+    representative = models.ForeignKey('accounts.Representative', on_delete=models.PROTECT, related_name='sms_campaign_recipients', null=True, blank=True)
+    recipient_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name='sms_campaign_recipients')
+    recipient_name = models.CharField(max_length=160, blank=True)
     phone_number = models.CharField(max_length=24)
     rendered_message = models.TextField()
+    attributes = models.JSONField(default=dict, blank=True)
     status = models.CharField(max_length=12, choices=State.choices, default=State.PENDING, db_index=True)
     provider_request_id = models.CharField(max_length=120, blank=True, db_index=True)
     provider_status = models.CharField(max_length=48, blank=True)
@@ -109,5 +133,25 @@ class SMSCampaignRecipient(TimestampedModel):
     submitted_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['campaign', 'representative'], name='sms_campaign_unique_recipient')]
+        constraints = [
+            models.UniqueConstraint(fields=['campaign', 'representative'], condition=Q(representative__isnull=False), name='sms_campaign_unique_recipient'),
+            models.UniqueConstraint(fields=['campaign', 'recipient_user'], condition=Q(recipient_user__isnull=False), name='sms_campaign_unique_user_recipient'),
+            models.CheckConstraint(condition=(Q(representative__isnull=False, recipient_user__isnull=True) | Q(representative__isnull=True, recipient_user__isnull=False)), name='sms_campaign_exactly_one_recipient'),
+        ]
         permissions = [('approve_sms_campaign', 'Can approve SMS campaigns'), ('manage_sms_campaigns', 'Can manage SMS campaigns'), ('send_sms_campaign', 'Can send approved SMS campaigns'), ('view_sms_results', 'Can view SMS campaign results'), ('approve_sms_reward', 'Can approve rewards'), ('activate_sms_reward', 'Can activate approved rewards')]
+
+
+class SMSProviderConfig(TimestampedModel):
+    """Singleton provider credentials; the API key is encrypted before storage."""
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    api_key_encrypted = models.TextField()
+    sender_line = models.CharField(max_length=40)
+    enabled = models.BooleanField(default=False)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'تنظیم اتصال پیامک'
+        verbose_name_plural = 'تنظیم اتصال پیامک'
+
+    def __str__(self):
+        return 'تنظیم اتصال پیامک FarazSMS'

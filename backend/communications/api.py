@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import serializers, status
+from rest_framework import serializers, status, permissions
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -30,6 +30,30 @@ class PortalNotificationReadView(APIView):
 
     def post(self, request, pk):
         item = get_object_or_404(Delivery, pk=pk, representative=request.user.representative, channel='in_app')
+        if not item.read_at:
+            item.read_at = timezone.now()
+            item.save(update_fields=['read_at', 'updated_at'])
+        return Response({'id': item.pk, 'read_at': item.read_at})
+
+
+class IsActivePanelUser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user.is_authenticated and request.user.is_active and request.user.is_staff)
+
+
+class PanelNotificationListView(ListAPIView):
+    permission_classes = [IsActivePanelUser]
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        return Delivery.objects.filter(recipient_user=self.request.user, channel='in_app').select_related('announcement')
+
+
+class PanelNotificationReadView(APIView):
+    permission_classes = [IsActivePanelUser]
+
+    def post(self, request, pk):
+        item = get_object_or_404(Delivery, pk=pk, recipient_user=request.user, channel='in_app')
         if not item.read_at:
             item.read_at = timezone.now()
             item.save(update_fields=['read_at', 'updated_at'])

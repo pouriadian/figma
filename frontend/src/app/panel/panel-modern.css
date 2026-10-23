@@ -23,6 +23,8 @@
 .fm-brand-mini {display:none;width:44px;height:44px;align-items:center;justify-content:center;background:#15171a;color:#fff;border-radius:11px;font:800 23px Arial,sans-serif;}
 .fm-sidebar-search {background:#f6f7f8;border-color:#e9eaec;}
 .fm-menu-heading {color:#9ca3aa;font-size:10px;}
+.fm-menu-heading-toggle {width:100%;display:flex;align-items:center;justify-content:space-between;border:0;background:transparent;text-align:right;cursor:pointer;}
+.fm-menu-heading-toggle:focus-visible {outline:2px solid #bb3544;outline-offset:2px;border-radius:6px;}
 .fm-menu-link {color:#555b65!important;min-height:44px;border-radius:11px;}
 .fm-menu-link:hover {background:#f4f5f6!important;color:#15171a!important;}
 .fm-menu-link.is-active {background:#fbeff0;color:#992637!important;font-weight:800;}

@@ -5,6 +5,8 @@ rechecked by Django for every request; Next.js only holds httpOnly JWT cookies.
 """
 from datetime import timedelta, datetime, time
 from collections import defaultdict
+from hashlib import sha256
+import json
 
 from django.contrib.auth.models import Group
 from django.db import transaction
@@ -662,20 +664,20 @@ class AnnouncementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Announcement
-        fields = ['id', 'title', 'body', 'audience', 'selected_representatives',
+        fields = ['id', 'title', 'body', 'audience', 'selected_representatives', 'selected_users',
                   'channel', 'status', 'scheduled_at', 'delivery_count', 'created_at']
         read_only_fields = ['id', 'status', 'created_at']
 
 
 class AnnouncementViewSet(StaffViewSet):
     def _check_permission(self, request):
-        if request.method == 'POST' and getattr(self, 'action', '') == 'queue':
+        if request.method == 'POST' and getattr(self, 'action', '') in {'queue','preview'}:
             if not request.user.has_perm('communications.change_announcement'):
                 raise PermissionDenied('اجازه ارسال ندارید')
             return
         return super()._check_permission(request)
 
-    queryset = Announcement.objects.prefetch_related('deliveries', 'selected_representatives').all()
+    queryset = Announcement.objects.prefetch_related('deliveries', 'selected_representatives', 'selected_users').all()
     serializer_class = AnnouncementSerializer
     permission_prefix, model_name = 'communications', 'announcement'
     search_fields = ['title', 'body']
@@ -683,31 +685,100 @@ class AnnouncementViewSet(StaffViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
+    @action(detail=False, methods=['get'])
+    def audiences(self, request):
+        """Search active panel users or representatives for the announcement picker."""
+        from django.db.models import Q
+        from accounts.models import User
+        kind=request.query_params.get('kind','representatives')
+        query=request.query_params.get('q','').strip()[:100]
+        if kind=='panel_users':
+            qs=User.objects.filter(is_staff=True,is_active=True)
+            if query:qs=qs.filter(Q(first_name__icontains=query)|Q(last_name__icontains=query)|Q(email__icontains=query)|Q(phone__icontains=query))
+            count=qs.count();rows=qs.order_by('first_name','last_name','pk')[:100]
+            return Response({'count':count,'results':[{'id':u.pk,'name':u.get_full_name() or u.email,'email':u.email,'phone':u.phone,'role':u.role} for u in rows]})
+        if kind!='representatives':return Response({'detail':'نوع مخاطب معتبر نیست.'},status=400)
+        qs=Representative.objects.filter(status='active').select_related('user')
+        if query:qs=qs.filter(Q(company_name__icontains=query)|Q(contact_name__icontains=query)|Q(code__icontains=query)|Q(phone__icontains=query))
+        count=qs.count();rows=qs.order_by('company_name','pk')[:100]
+        consents=set(RepresentativeProfile.objects.filter(representative_id__in=[r.pk for r in rows],sms_consent=True).values_list('representative_id',flat=True))
+        return Response({'count':count,'results':[{'id':r.pk,'name':r.company_name,'contact_name':r.contact_name,'phone':r.phone,'code':r.code,'sms_consent':r.pk in consents} for r in rows]})
+
+    def _preview(self, announcement):
+        from accounts.models import User
+        channels=['in_app','email','sms'] if announcement.channel==Announcement.Channel.ALL else [announcement.channel]
+        records=[]
+        if announcement.audience in (Announcement.Audience.ACTIVE,Announcement.Audience.SELECTED):
+            reps=(Representative.objects.filter(status='active') if announcement.audience==Announcement.Audience.ACTIVE else announcement.selected_representatives.filter(status='active')).select_related('user').order_by('pk')
+            consent=set(RepresentativeProfile.objects.filter(representative_id__in=reps.values('id'),sms_consent=True).values_list('representative_id',flat=True))
+            for rep in reps:
+                email=rep.email or (rep.user.email if rep.user else '')
+                for channel in channels:
+                    eligible=channel=='in_app' or (channel=='email' and bool(email)) or (channel=='sms' and bool(rep.phone) and rep.pk in consent)
+                    reason='' if eligible else ('رضایت پیامکی ثبت نشده است' if channel=='sms' and rep.phone else 'اطلاعات تماس موجود نیست')
+                    records.append({'kind':'representative','id':rep.pk,'name':rep.company_name,'phone':rep.phone,'channel':channel,'eligible':eligible,'reason':reason})
+        else:
+            users=(User.objects.filter(is_staff=True,is_active=True) if announcement.audience==Announcement.Audience.ALL_PANEL else announcement.selected_users.filter(is_staff=True,is_active=True)).order_by('pk')
+            for user in users:
+                for channel in channels:
+                    eligible=channel=='in_app' or (channel=='email' and bool(user.email)) or (channel=='sms' and bool(user.phone))
+                    reason='' if eligible else 'شماره تماس یا ایمیل ثبت نشده است'
+                    records.append({'kind':'panel_user','id':user.pk,'name':user.get_full_name() or user.email,'phone':user.phone,'channel':channel,'eligible':eligible,'reason':reason})
+        signature=[{k:r[k] for k in ('kind','id','phone','channel','eligible')} for r in records]
+        digest=sha256(json.dumps(signature,ensure_ascii=False,sort_keys=True).encode('utf-8')).hexdigest()
+        eligible_count=sum(1 for row in records if row['eligible'])
+        return {'preview_hash':digest,'eligible_count':eligible_count,'skipped_count':len(records)-eligible_count,
+                'total_count':len(records),'recipients':records[:150]}
+
+    @action(detail=True, methods=['post'])
+    def preview(self, request, pk=None):
+        if not request.user.has_perm('communications.change_announcement'):
+            raise PermissionDenied('اجازه پیش‌نمایش گیرندگان را ندارید.')
+        item=self.get_object()
+        if item.status!='draft':return Response({'detail':'فقط پیش‌نویس قابل پیش‌نمایش است.'},status=409)
+        return Response(self._preview(item))
+
     @action(detail=True, methods=['post'])
     def queue(self, request, pk=None):
         if not request.user.has_perm('communications.change_announcement'):
             raise PermissionDenied('اجازه ارسال اطلاعیه را ندارید')
         item = self.get_object()
-        if item.status == 'draft':
-            item.queue_deliveries()
-        return Response(self.get_serializer(item).data)
+        if item.status != 'draft':return Response({'detail':'این اطلاعیه قبلاً از پیش‌نویس خارج شده است.'},status=409)
+        preview=self._preview(item)
+        if not request.data.get('preview_hash') or request.data.get('preview_hash')!=preview['preview_hash']:
+            return Response({'detail':'فهرست مخاطبان تغییر کرده است؛ دوباره پیش‌نمایش بگیرید.'},status=409)
+        if preview['eligible_count']<1:return Response({'detail':'هیچ گیرنده‌ی واجد شرایطی وجود ندارد.'},status=409)
+        if item.channel in (Announcement.Channel.SMS,Announcement.Channel.ALL):
+            from sms_campaigns.services import provider_is_ready
+            try:connected=provider_is_ready()
+            except RuntimeError:connected=False
+            if not connected:return Response({'detail':'اتصال پیامک فعال نیست؛ ابتدا از تنظیمات پیامک آن را راه‌اندازی کنید.'},status=409)
+        with transaction.atomic():
+            locked=Announcement.objects.select_for_update().get(pk=item.pk)
+            if locked.status!='draft':return Response({'detail':'این اطلاعیه قبلاً از پیش‌نویس خارج شده است.'},status=409)
+            locked.queue_deliveries()
+        return Response({**self.get_serializer(locked).data,'eligible_count':preview['eligible_count'],'skipped_count':preview['skipped_count']})
 
 
 class DeliverySerializer(serializers.ModelSerializer):
     announcement_title = serializers.CharField(source='announcement.title', read_only=True)
-    representative_name = serializers.CharField(source='representative.company_name', read_only=True)
+    representative_name = serializers.SerializerMethodField()
+
+    def get_representative_name(self,obj):
+        if obj.representative_id:return obj.representative.company_name
+        return (obj.recipient_user.get_full_name() or obj.recipient_user.email) if obj.recipient_user_id else ''
 
     class Meta:
         model = Delivery
-        fields = ['id', 'announcement', 'announcement_title', 'representative', 'representative_name',
-                  'channel', 'status', 'attempts', 'last_error', 'processed_at', 'read_at']
+        fields = ['id', 'announcement', 'announcement_title', 'representative', 'recipient_user', 'representative_name',
+                  'recipient_phone', 'channel', 'status', 'attempts', 'last_error', 'processed_at', 'read_at']
 
 
 class DeliveryViewSet(StaffViewSet):
-    queryset = Delivery.objects.select_related('announcement', 'representative').all()
+    queryset = Delivery.objects.select_related('announcement', 'representative', 'recipient_user').all()
     serializer_class = DeliverySerializer
     permission_prefix, model_name = 'communications', 'delivery'
-    search_fields = ['announcement__title', 'representative__company_name']
+    search_fields = ['announcement__title', 'representative__company_name', 'recipient_user__email', 'recipient_user__first_name', 'recipient_user__last_name']
     http_method_names = ['get', 'head', 'options']
 
 

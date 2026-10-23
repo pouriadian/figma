@@ -83,8 +83,8 @@ export function HomeHistory({content}: {content?:CMSSection}){
 export function HomeSamples({content}: {content?:CMSSection}){
  return <section className="bg-[#f5f5f1] py-16 sm:py-20"><Container>
   <SectionTitle title={content?.title||"سمپل‌ها"} action={{href:'/products',label:'بیشتر'}} />
-  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-5">
-    {(content?.images?.length?content.images.map(item=>item.url):content?.image?[content.image]:asset.samples).map((src,i)=><Link href="/products" key={`${src}-${i}`} className="group block overflow-hidden rounded-[18px] border border-[#e5e7e1] bg-white transition-[box-shadow,transform] duration-300 hover:-translate-y-1 hover:shadow-[0_16px_34px_rgba(0,0,0,.09)]"><div className="relative aspect-[4/4.4] overflow-hidden bg-[#e6e7e3]"><Image src={src} alt={content?.images?.[i]?.alt||samples[i]||"سمپل فرامید"} fill sizes="(max-width:650px) 50vw, 25vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.035]" /></div><h3 className="m-0 p-4 text-center text-sm font-medium">{content?.images?.[i]?.caption||samples[i]||"سمپل فرامید"}</h3></Link>)}
+  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-5">
+    {(content?.images?.length?content.images.map(item=>item.url):content?.image?[content.image]:asset.samples).map((src,i)=><Link href="/products" key={`${src}-${i}`} className="group block overflow-hidden rounded-[14px] border border-[#e5e7e1] bg-white transition-[box-shadow,transform] duration-300 hover:-translate-y-1 hover:shadow-[0_16px_34px_rgba(0,0,0,.09)] sm:rounded-[18px]"><div className="relative aspect-[1.08] overflow-hidden bg-[#e6e7e3] sm:aspect-[4/4.4]"><Image src={src} alt={content?.images?.[i]?.alt||samples[i]||"سمپل فرامید"} fill sizes="(max-width:650px) 46vw, 25vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.035]" /></div><h3 className="m-0 px-2 py-2.5 text-center text-xs font-medium sm:p-4 sm:text-sm">{content?.images?.[i]?.caption||samples[i]||"سمپل فرامید"}</h3></Link>)}
   </div>
  </Container></section>;
 }

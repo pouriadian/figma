@@ -1,4 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
+import {isSameOrigin} from '@/lib/panel-auth';
 const backend=(process.env.API_INTERNAL_URL||'http://127.0.0.1:8000').replace(/\/$/,'');
 function valid(path:string[],method:string){
  if(path.length===1 && ['me','dashboard','inquiries','notifications'].includes(path[0]))return method==='GET'||(method==='POST'&&path[0]==='inquiries');
@@ -8,7 +9,7 @@ function valid(path:string[],method:string){
 async function handler(request:NextRequest,{params}:{params:Promise<{path:string[]}>}){
  const {path}=await params;const method=request.method;
  if(!valid(path,method))return NextResponse.json({detail:'Not found'},{status:404});
- if(method==='POST'&&request.headers.get('origin')&&request.headers.get('origin')!==request.nextUrl.origin)return NextResponse.json({detail:'Forbidden'},{status:403});
+ if(method==='POST'&&!isSameOrigin(request))return NextResponse.json({detail:'Forbidden'},{status:403,headers:{'cache-control':'no-store'}});
  const access=request.cookies.get('fm_access')?.value;
  const refresh=request.cookies.get('fm_refresh')?.value;
  if(!access&&!refresh)return NextResponse.json({detail:'Login required'},{status:401});

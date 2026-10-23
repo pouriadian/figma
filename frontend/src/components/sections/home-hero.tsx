@@ -19,7 +19,7 @@ function HeroProductHighlight({mobile = false, href = "/products", label = "Mela
       href={href}
       aria-label="مشاهده محصولات فرامید - Melamine MDF"
       className={mobile
-        ? 'group absolute bottom-[45%] right-[5%] z-20 h-[75px] w-[224px] max-w-[80vw] [direction:ltr]'
+        ? 'group absolute bottom-[49%] left-1/2 z-20 h-[70px] w-[210px] max-w-[90vw] -translate-x-1/2 [direction:ltr]'
         : 'group absolute left-[61.1111%] top-[77.0%] z-20 h-[11.694%] w-[17.535%] [direction:ltr]'}
     >
       <div className="absolute left-0 top-0 h-[97%] w-[94.4%] rounded-[10px] bg-black/10 transition-colors duration-300 group-hover:bg-black/15" />
@@ -80,8 +80,8 @@ function DesktopHomeHero({content}: {content?:CMSSection}) {
 /** A readable adaptation of exactly the same assets/content at phone/tablet sizes. */
 function MobileHomeHero({content}: {content?:CMSSection}) {
   return (
-    <div className="relative min-h-[700px] w-full overflow-hidden bg-[#0d0d0d] sm:min-h-[760px] lg:hidden">
-      <div className="absolute inset-x-0 top-0 h-[57%] overflow-hidden bg-[#d0d0d0]">
+    <div className="relative min-h-[620px] w-full overflow-hidden bg-[#0d0d0d] sm:min-h-[680px] lg:hidden">
+      <div className="absolute inset-x-0 top-0 h-[50%] overflow-hidden bg-[#d0d0d0]">
         <Image
           src={content?.image||asset.hero}
           alt={content?.image_alt||"بسته‌بندی مجموعه MDF ملامینه فرامید"}
@@ -91,8 +91,8 @@ function MobileHomeHero({content}: {content?:CMSSection}) {
           className="faromid-hero-photo object-cover object-center"
         />
       </div>
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/55 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-[45%] bg-[#0d0d0d]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/55 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-[52%] bg-[#0d0d0d]" />
       <HeroProductHighlight mobile href={content?.link_url||"/products"} label={content?.link_label||"Melamine MDF"}/>
       <Image
         src={brand.heroStripes}
@@ -101,12 +101,12 @@ function MobileHomeHero({content}: {content?:CMSSection}) {
         width={472}
         height={360}
         priority
-        className="faromid-hero-stripes faromid-hero-stripes--mobile absolute bottom-[140px] left-1/2 h-auto w-[min(60vw,285px)] -translate-x-1/2 select-none sm:bottom-[150px] sm:w-[300px]"
+        className="faromid-hero-stripes faromid-hero-stripes--mobile absolute inset-x-0 bottom-[100px] mx-auto h-auto w-[min(50vw,210px)] select-none sm:bottom-[110px] sm:w-[min(48vw,270px)]"
       />
-      <div className="absolute right-[8%] bottom-[34px] left-[8%] mx-auto max-w-[460px]">
+      <div className="absolute right-[6%] bottom-[25px] left-[6%] mx-auto max-w-[460px] sm:bottom-[30px]">
         <span aria-hidden="true" className="absolute -top-3 right-0 h-6 w-7 border-t-2 border-r-2 border-[#ec1c24]" />
-        <h1 className="m-0 px-5 text-center text-[15px] leading-[2] font-bold text-white sm:text-lg" dir="rtl">{content?.title||HERO_TITLE}</h1>
-        {content?.subtitle&&<p className="mt-2 text-center text-xs leading-6 text-white/75">{content.subtitle}</p>}
+        <h1 className="m-0 px-2 text-center text-[clamp(13px,4vw,17px)] leading-[1.8] font-bold text-white sm:px-5 sm:text-lg" dir="rtl">{content?.title||HERO_TITLE}</h1>
+        {content?.subtitle&&<p className="mt-1.5 text-center text-[11px] leading-5 text-white/75 sm:mt-2 sm:text-xs sm:leading-6">{content.subtitle}</p>}
         <span aria-hidden="true" className="absolute -bottom-3 left-0 h-6 w-7 border-b-2 border-l-2 border-[#ec1c24]" />
       </div>
     </div>

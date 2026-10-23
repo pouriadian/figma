@@ -30,7 +30,7 @@ class Command(BaseCommand):
         due = Q(announcement__scheduled_at__isnull=True) | Q(announcement__scheduled_at__lte=timezone.now())
         for _ in range(min(max(0, options['limit']), 500)):
             with transaction.atomic():
-                query = Delivery.objects.filter(status='pending', announcement__status='queued').filter(due).select_related('announcement', 'representative', 'representative__user').order_by('pk')
+                query = Delivery.objects.filter(status='pending', announcement__status='queued').filter(due).select_related('announcement', 'representative', 'representative__user', 'recipient_user').order_by('pk')
                 if connection.features.has_select_for_update_skip_locked:
                     query = query.select_for_update(skip_locked=True)
                 else:
@@ -43,7 +43,7 @@ class Command(BaseCommand):
                 item.save(update_fields=['status', 'attempts', 'updated_at'])
                 claimed_id = item.pk
             # The lock is committed before external mail/SMS calls.
-            item = Delivery.objects.select_related('announcement', 'representative', 'representative__user').get(pk=claimed_id)
+            item = Delivery.objects.select_related('announcement', 'representative', 'representative__user', 'recipient_user').get(pk=claimed_id)
             try:
                 self.dispatch(item)
             except Exception as exc:
@@ -60,13 +60,14 @@ class Command(BaseCommand):
 
     def dispatch(self, item):
         representative = item.representative
+        user = item.recipient_user
         ann = item.announcement
         item.last_error = ''
         if item.channel == 'in_app':
             item.status = Delivery.State.ACCEPTED
             return
         if item.channel == 'email':
-            target = representative.email or (representative.user.email if representative.user else '')
+            target = (representative.email or (representative.user.email if representative.user else '')) if representative else (user.email if user else '')
             if not target:
                 item.status = Delivery.State.SKIPPED
                 item.last_error = 'No email address'
@@ -81,17 +82,19 @@ class Command(BaseCommand):
             item.status = Delivery.State.ACCEPTED
             return
         if item.channel == 'sms':
-            from partners.models import RepresentativeProfile
-            if not RepresentativeProfile.objects.filter(representative_id=representative.pk, sms_consent=True).exists():
-                item.status = Delivery.State.SKIPPED
-                item.last_error = 'SMS consent is not enabled'
-                return
-            if not representative.phone:
+            if representative:
+                from partners.models import RepresentativeProfile
+                if not RepresentativeProfile.objects.filter(representative_id=representative.pk, sms_consent=True).exists():
+                    item.status = Delivery.State.SKIPPED
+                    item.last_error = 'SMS consent is not enabled'
+                    return
+            phone = item.recipient_phone or (representative.phone if representative else (user.phone if user else ''))
+            if not phone:
                 item.status = Delivery.State.SKIPPED
                 item.last_error = 'Missing phone'
                 return
             from sms_campaigns.services import farazsms_send
-            result=farazsms_send(representative.phone,ann.body)
+            result=farazsms_send(phone,ann.body)
             item.provider_reference=result.get('request_id','')[:150]
             item.last_error=result.get('error','')
             item.status={'submitted':Delivery.State.SUBMITTED,'unknown':Delivery.State.UNKNOWN}.get(result['state'],Delivery.State.FAILED)

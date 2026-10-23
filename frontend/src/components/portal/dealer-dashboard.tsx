@@ -2,6 +2,7 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import {useRouter} from 'next/navigation';
 import {Bell,BellDot,Box,ClipboardList,LogOut,Plus,RefreshCw,ArrowUpLeft} from 'lucide-react';
+import {PageLoader} from '@/components/ui/page-loader';
 
 type User={company_name:string;name:string;code:string;city:string};
 type Stats={total_inquiries:number;open_inquiries:number;unread_notifications:number};
@@ -14,7 +15,7 @@ const input='mt-2 h-12 w-full rounded-xl border border-[#e1e5de] bg-white px-4 t
 export function DealerDashboard({products}:{products:{id:number;code:string|number;name:string}[]}){
  const router=useRouter();const [user,setUser]=useState<User|null>(null);const [stats,setStats]=useState<Stats|null>(null);
  const [inquiries,setInquiries]=useState<Inquiry[]>([]);const [notifications,setNotifications]=useState<Notification[]>([]);
- const [tab,setTab]=useState<'inquiries'|'notifications'>('inquiries');const [loading,setLoading]=useState(true);
+ const [tab,setTab]=useState<'inquiries'|'notifications'>('inquiries');const [loading,setLoading]=useState(true);const [initialLoad,setInitialLoad]=useState(true);
  const [showForm,setShowForm]=useState(false);const [kind,setKind]=useState('quote');const [product,setProduct]=useState('');
  const [message,setMessage]=useState('');const [error,setError]=useState('');const [result,setResult]=useState('');
  async function load(){setLoading(true);try{
@@ -22,7 +23,7 @@ export function DealerDashboard({products}:{products:{id:number;code:string|numb
   if(a.status===401||a.status===403){router.replace('/representative/login');return;}
   if(!a.ok||!b.ok||!c.ok||!d.ok)throw new Error('بارگذاری اطلاعات ناموفق بود.');
   setUser(await a.json());setStats(await b.json());setInquiries((await c.json() as Result<Inquiry>).results);setNotifications((await d.json() as Result<Notification>).results);
- }catch(err){setError(err instanceof Error?err.message:'خطا در ارتباط');}finally{setLoading(false);}}
+ }catch(err){setError(err instanceof Error?err.message:'خطا در ارتباط');}finally{setLoading(false);setInitialLoad(false);}}
  useEffect(()=>{void load();},[]);
  async function send(e:FormEvent){e.preventDefault();setError('');setResult('');
   try {const res=await fetch('/api/portal/inquiries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,product:product?Number(product):null,message})});
@@ -31,6 +32,7 @@ export function DealerDashboard({products}:{products:{id:number;code:string|numb
   }catch(err){setError(err instanceof Error?err.message:'خطا');}}
  async function read(id:number){const res=await fetch(`/api/portal/notifications/${id}/read`,{method:'POST'});if(res.ok)void load();}
  async function logout(){await fetch('/api/auth/logout',{method:'POST'});router.replace('/representative/login');router.refresh();}
+ if(initialLoad)return <PageLoader/>;
  const cards=[{name:'استعلام‌ها',value:stats?.total_inquiries??'—',icon:ClipboardList},{name:'در حال پیگیری',value:stats?.open_inquiries??'—',icon:Box},{name:'اعلان خوانده‌نشده',value:stats?.unread_notifications??'—',icon:BellDot}];
  return <div className="mx-auto max-w-[1200px] px-5 py-10 sm:px-8 sm:py-16">
   <div className="flex flex-wrap items-center justify-between gap-5"><div><p className="mb-2 text-xs tracking-wider text-[#7b837b]">FAROMID / REPRESENTATIVE PORTAL</p><h1 className="mb-1 text-2xl font-semibold text-[#222e26] sm:text-3xl">{user?.company_name||'پنل نمایندگان'}</h1><p className="m-0 text-sm text-[#838c83]">{user?`خوش آمدید ${user.name} • ${user.code}`:'در حال دریافت اطلاعات...'}</p></div><div className="flex gap-2"><button type="button" onClick={()=>void load()} className="flex h-11 items-center gap-2 rounded-xl border border-[#dfe4dd] bg-white px-4 text-sm"><RefreshCw size={16}/> بروزرسانی</button><button type="button" onClick={()=>void logout()} className="flex h-11 items-center gap-2 rounded-xl bg-[#28302a] px-4 text-sm text-white"><LogOut size={16}/> خروج</button></div></div>

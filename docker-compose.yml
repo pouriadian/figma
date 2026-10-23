@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
       POSTGRES_HOST: db
@@ -46,7 +46,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
       POSTGRES_HOST: db
       POSTGRES_DB: ${POSTGRES_DB:-faromid}
