@@ -4,7 +4,7 @@ from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from rest_framework.test import APIClient
 from analytics.models import TrafficEvent
-from accounts.models import Representative
+from accounts.models import Representative, StaffTeam
 from catalog.models import Product, ProductCategory
 from crm.models import Inquiry
 from content.models import SitePage, SiteSection, MediaAsset
@@ -65,6 +65,37 @@ class StaffApiTests(TestCase):
         self.assertEqual(session.status_code, 200)
         self.assertFalse(session.data['modules']['products'])
         self.assertFalse(session.data['modules']['pages'])
+
+    def test_staff_teams_require_user_management_and_are_soft_deactivated(self):
+        limited=self.client_for(self.staff_no_perm)
+        self.assertEqual(limited.get('/api/v1/manage/teams/').status_code,403)
+        owner=self.client_for(self.admin)
+        created=owner.post('/api/v1/manage/teams/',{'name':'پرسنل'},format='json')
+        self.assertEqual(created.status_code,201,created.data)
+        team_id=created.data['id']
+        deleted=owner.delete(f'/api/v1/manage/teams/{team_id}/')
+        self.assertEqual(deleted.status_code,204)
+        team=StaffTeam.objects.get(pk=team_id)
+        self.assertFalse(team.is_active)
+
+    def test_only_superuser_can_assign_admin_role(self):
+        permission=Permission.objects.get(content_type__app_label='accounts',codename='add_user')
+        self.staff_no_perm.user_permissions.add(permission)
+        response=self.client_for(self.staff_no_perm).post('/api/v1/manage/users/',{
+            'username':'new-admin','first_name':'New','email':'new-admin@example.com',
+            'password':'StrongAndLong123!','role':'admin',
+        },format='json')
+        self.assertEqual(response.status_code,403,response.data)
+
+    def test_inactive_team_membership_is_preserved_when_editing_employee(self):
+        team=StaffTeam.objects.create(name='تیم قدیمی',is_active=False)
+        employee=get_user_model().objects.create_user(username='team-member',email='team-member@example.com',password='StrongAndLong123!',is_staff=True,staff_team=team)
+        response=self.client_for(self.admin).patch(f'/api/v1/manage/users/{employee.pk}/',{
+            'phone':'09120000000','staff_team':team.pk,
+        },format='json')
+        self.assertEqual(response.status_code,200,response.data)
+        employee.refresh_from_db()
+        self.assertEqual(employee.staff_team_id,team.pk)
 
     def test_real_analytics_and_top_product_series(self):
         TrafficEvent.objects.create(kind='page_view', path='/')

@@ -9,6 +9,19 @@ def dealer_code():
     return 'FR-' + uuid4().hex[:10].upper()
 
 
+class StaffTeam(TimestampedModel):
+    name = models.CharField('نام تیم', max_length=80, unique=True)
+    is_active = models.BooleanField('فعال', default=True, db_index=True)
+
+    class Meta:
+        ordering = ['name', 'pk']
+        verbose_name = 'تیم کارکنان'
+        verbose_name_plural = 'تیم‌های کارکنان'
+
+    def __str__(self):
+        return self.name
+
+
 class User(AbstractUser):
     class Role(models.TextChoices):
         ADMIN = 'admin', 'مدیر ارشد'
@@ -21,6 +34,8 @@ class User(AbstractUser):
     email = models.EmailField('ایمیل', unique=True)
     phone = models.CharField('تلفن', max_length=20, blank=True)
     role = models.CharField('نقش', max_length=24, choices=Role.choices, default=Role.REPRESENTATIVE, db_index=True)
+    staff_team = models.ForeignKey(StaffTeam, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='users', verbose_name='تیم سازمانی')
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 

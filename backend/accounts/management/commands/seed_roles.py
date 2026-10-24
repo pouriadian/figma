@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from accounts.models import User
 
 ROLE_APPS = {
-    'admin': {'accounts', 'catalog', 'crm', 'communications', 'content', 'analytics'},
+    'admin': {'accounts', 'catalog', 'crm', 'communications', 'content', 'analytics', 'sms_campaigns'},
     'manager': {'accounts', 'catalog', 'crm', 'communications', 'content', 'analytics'},
     'sales': {'catalog', 'crm', 'communications', 'accounts'},
     'content': {'catalog', 'content'},
@@ -32,7 +32,10 @@ class Command(BaseCommand):
                 permissions = permissions.exclude(codename='edit_site_pages')
             group.permissions.set(permissions)
             self.stdout.write(self.style.SUCCESS(f'{role}: {group.permissions.count()} permissions'))
+        managed_roles = set(ROLE_APPS)
         for user in User.objects.filter(is_superuser=False):
             group = Group.objects.filter(name=user.role).first()
-            if group:
-                user.groups.set([group])
+            # Keep SMS access and any separately managed memberships intact;
+            # only replace the role group controlled by this command.
+            extra_groups = list(user.groups.exclude(name__in=managed_roles))
+            user.groups.set(([group] if group else []) + extra_groups)

@@ -21,7 +21,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.models import Representative, User
+from accounts.models import Representative, StaffTeam, User
 from partners.models import RepresentativeProfile
 from analytics.models import TrafficEvent
 from catalog.models import Product, ProductCategory, ProductImage
@@ -76,6 +76,7 @@ class AdminMeView(APIView):
                 'media_add': user.has_perm('content.add_mediaasset'),
                 'media_delete': user.has_perm('content.delete_mediaasset'),
                 'users_add': user.has_perm('accounts.add_user'),
+                'users_manage': user.has_perm('accounts.change_user'),
                 'sms_manage': user.has_perm('sms_campaigns.manage_sms_campaigns') or user.groups.filter(name__in=['sms_campaign_managers','sms_campaign_administrators']).exists(),
                 'sms_approve': user.has_perm('sms_campaigns.approve_sms_campaign') or user.groups.filter(name='sms_campaign_administrators').exists(),
                 'sms_send': user.has_perm('sms_campaigns.send_sms_campaign') or user.groups.filter(name__in=['sms_campaign_managers','sms_campaign_administrators']).exists(),
@@ -788,6 +789,13 @@ class UserSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(source='date_joined', read_only=True)
     password = serializers.CharField(write_only=True, required=False, min_length=10)
     sms_access = serializers.ListField(child=serializers.ChoiceField(choices=['manager','viewer','administrator']), required=False)
+    staff_team_name = serializers.CharField(source='staff_team.name', read_only=True, allow_null=True)
+    staff_team = serializers.PrimaryKeyRelatedField(queryset=StaffTeam.objects.all(), required=False, allow_null=True)
+
+    def validate_staff_team(self, value):
+        if value and not value.is_active and (not self.instance or self.instance.staff_team_id != value.pk):
+            raise serializers.ValidationError('تیم غیرفعال را نمی‌توان به کارمند جدید اختصاص داد.')
+        return value
 
     def validate_password(self, value):
         from django.contrib.auth.password_validation import validate_password
@@ -807,7 +815,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'phone', 'role',
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'phone', 'role', 'staff_team', 'staff_team_name',
                   'is_active', 'is_staff', 'password', 'created_at', 'sms_access']
         read_only_fields = ['id', 'is_staff', 'created_at']
 
@@ -860,6 +868,28 @@ class UserSerializer(serializers.ModelSerializer):
         if access and not instance.is_staff:
             instance.is_staff=True
             instance.save(update_fields=['is_staff'])
+
+
+class StaffTeamSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StaffTeam
+        fields = ['id', 'name', 'is_active']
+        read_only_fields = ['id']
+
+
+class StaffTeamViewSet(StaffViewSet):
+    queryset = StaffTeam.objects.all()
+    serializer_class = StaffTeamSerializer
+    # Team membership is organizational data; only users administrators may manage it.
+    permission_prefix, model_name = 'accounts', 'user'
+    search_fields = ['name']
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
+    def destroy(self, request, *args, **kwargs):
+        team = self.get_object()
+        team.is_active = False
+        team.save(update_fields=['is_active', 'updated_at'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserViewSet(StaffViewSet):
@@ -970,3 +1000,4 @@ router.register('section-images', SectionImageViewSet, basename='manage-section-
 router.register('announcements', AnnouncementViewSet, basename='manage-announcements')
 router.register('deliveries', DeliveryViewSet, basename='manage-deliveries')
 router.register('users', UserViewSet, basename='manage-users')
+router.register('teams', StaffTeamViewSet, basename='manage-teams')

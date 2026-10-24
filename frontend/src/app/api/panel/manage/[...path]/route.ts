@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {authorized,isSameOrigin,jsonError,setAdminCookies,clearAdminCookies} from '@/lib/panel-auth';
-const ALLOWED=new Set(['dashboard','pages','sections','section-images','media','products','product-images','categories','content','representatives','inquiries','applications','announcements','deliveries','users','sales','sms','rewards','notifications']);
+const ALLOWED=new Set(['dashboard','pages','sections','section-images','media','products','product-images','categories','content','representatives','inquiries','applications','announcements','deliveries','users','teams','sales','sms','rewards','notifications']);
 const MUTATING=new Set(['POST','PATCH','PUT','DELETE']);
 
 async function handler(request:NextRequest,context:{params:Promise<{path:string[]}>}){

@@ -11,9 +11,9 @@ from rest_framework import permissions, status
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from accounts.models import Representative, User
+from accounts.models import Representative, StaffTeam, User
 from partners.models import RepresentativeProfile
-from .models import SalesSnapshot, SalesImportBatch, DiscountRule, RepresentativeReward, SMSCampaign, SMSCampaignRecipient, SMSPattern
+from .models import SalesSnapshot, SalesImportBatch, DiscountRule, RepresentativeReward, SMSCampaign, SMSCampaignRecipient, SMSPattern, SMSContact
 from .services import render_message, render_template, normalize_phone
 
 
@@ -24,6 +24,8 @@ def can(user, permission):
     if permission in {'sms_campaigns.view_sms_results','sms_campaigns.view_smscampaign','sms_campaigns.view_smscampaignrecipient'}:
         return bool(groups & {'sms_campaign_managers','sms_campaign_viewers','sms_campaign_administrators'})
     if permission in {'sms_campaigns.manage_sms_campaigns','sms_campaigns.send_sms_campaign'}:
+        return bool(groups & {'sms_campaign_managers','sms_campaign_administrators'})
+    if permission == 'sms_campaigns.manage_sms_contacts':
         return bool(groups & {'sms_campaign_managers','sms_campaign_administrators'})
     if permission in {'sms_campaigns.approve_sms_campaign','sms_campaigns.approve_sales_import','sms_campaigns.approve_sms_reward','sms_campaigns.activate_sms_reward'}:
         return 'sms_campaign_administrators' in groups
@@ -99,7 +101,7 @@ def provider_rejection_detail(response, api_key=''):
 
 def validate_audience_filters(raw):
     if not isinstance(raw,dict):raise ValueError('فیلترها باید یک شیء معتبر باشند.')
-    allowed={'province','city','status','sales_month','min_sales','max_sales','min_orders','max_orders','min_score','max_score','representative_ids','audience','user_ids','search'}
+    allowed={'province','city','status','sales_month','min_sales','max_sales','min_orders','max_orders','min_score','max_score','representative_ids','audience','user_ids','contact_ids','team_id','search'}
     if set(raw)-allowed:raise ValueError('فیلتر مخاطب ناشناخته است.')
     result=dict(raw)
     for key in ('province','city'):
@@ -125,11 +127,21 @@ def validate_audience_filters(raw):
         if not isinstance(result['representative_ids'],list) or len(result['representative_ids'])>1000:raise ValueError('فهرست نمایندگان معتبر نیست.')
         try:result['representative_ids']=list(dict.fromkeys(int(value) for value in result['representative_ids']))
         except (ValueError,TypeError):raise ValueError('شناسه نمایندگان معتبر نیست.')
-    if result.get('audience') not in (None, 'representatives', 'staff'):raise ValueError('نوع مخاطب معتبر نیست.')
+    if result.get('audience') not in (None, 'representatives', 'staff', 'contacts'):raise ValueError('نوع مخاطب معتبر نیست.')
     if result.get('user_ids') is not None:
         if not isinstance(result['user_ids'],list) or len(result['user_ids'])>1000:raise ValueError('فهرست کاربران پنل معتبر نیست.')
         try:result['user_ids']=list(dict.fromkeys(int(value) for value in result['user_ids']))
         except (ValueError,TypeError):raise ValueError('شناسه کاربران پنل معتبر نیست.')
+    if result.get('contact_ids') is not None:
+        if not isinstance(result['contact_ids'],list) or len(result['contact_ids'])>1000:raise ValueError('فهرست مخاطبان معتبر نیست.')
+        try:result['contact_ids']=list(dict.fromkeys(int(value) for value in result['contact_ids']))
+        except (ValueError,TypeError):raise ValueError('شناسه مخاطبان معتبر نیست.')
+    if result.get('team_id') is not None:
+        try:result['team_id']=int(result['team_id'])
+        except (ValueError,TypeError):raise ValueError('تیم انتخاب‌شده معتبر نیست.')
+        if result['team_id']<1:raise ValueError('تیم انتخاب‌شده معتبر نیست.')
+    if (result.get('team_id') is not None or result.get('contact_ids') is not None) and result.get('audience')!='contacts':
+        raise ValueError('فیلتر تیم و دفترچه فقط برای مخاطبان دفترچه تلفن مجاز است.')
     if result.get('search') is not None and (not isinstance(result['search'],str) or len(result['search'])>100):raise ValueError('جست‌وجوی مخاطب معتبر نیست.')
     for lower,upper in (('min_sales','max_sales'),('min_orders','max_orders'),('min_score','max_score')):
         if result.get(lower) is not None and result.get(upper) is not None and Decimal(str(result[lower]))>Decimal(str(result[upper])):raise ValueError(f'{lower} از {upper} بیشتر است.')
@@ -373,12 +385,84 @@ class SMSAudienceView(AccessView):
             if term:qs=qs.filter(Q(first_name__icontains=term)|Q(last_name__icontains=term)|Q(email__icontains=term)|Q(phone__icontains=term))
             rows=qs.order_by('first_name','last_name','pk')[:100]
             return Response({'count':qs.count(),'results':[{'id':u.pk,'name':u.get_full_name() or u.email,'phone':u.phone,'role':u.role} for u in rows]})
+        if kind=='contacts':
+            qs=SMSContact.objects.filter(is_active=True).select_related('team')
+            team_id=request.query_params.get('team_id','').strip()
+            if team_id:
+                try:qs=qs.filter(team_id=int(team_id))
+                except ValueError:return Response({'detail':'شناسه تیم معتبر نیست.'},status=400)
+            if term:qs=qs.filter(Q(name__icontains=term)|Q(phone_number__icontains=term)|Q(team__name__icontains=term))
+            return Response({'count':qs.count(),'results':[{'id':c.pk,'name':c.name,'phone':c.phone_number,
+                'team_id':c.team_id,'team_name':c.team.name if c.team_id else ''} for c in qs.order_by('name','pk')[:100]]})
         if kind!='representatives':return Response({'detail':'نوع مخاطب معتبر نیست.'},status=400)
         qs=Representative.objects.filter(status='active')
         if term:qs=qs.filter(Q(code__icontains=term)|Q(contact_name__icontains=term)|Q(company_name__icontains=term)|Q(phone__icontains=term))
         rows=list(qs.order_by('company_name','pk')[:100])
         consents=set(RepresentativeProfile.objects.filter(representative_id__in=[r.pk for r in rows],sms_consent=True).values_list('representative_id',flat=True))
         return Response({'count':qs.count(),'results':[{'id':r.pk,'name':r.contact_name or r.company_name,'phone':r.phone,'code':r.code,'sms_consent':r.pk in consents} for r in rows]})
+
+
+class SMSContactView(AccessView):
+    required='sms_campaigns.manage_sms_contacts'
+
+    @staticmethod
+    def serialize(contact):
+        return {'id':contact.pk,'name':contact.name,'phone':contact.phone_number,
+                'phone_number':contact.phone_number,'team_id':contact.team_id,
+                'team_name':contact.team.name if contact.team_id else '',
+                'is_active':contact.is_active,'notes':contact.notes}
+
+    def get(self,request,pk=None):
+        if pk is not None:
+            contact=SMSContact.objects.select_related('team').filter(pk=pk).first()
+            if not contact:return Response({'detail':'مخاطب پیدا نشد.'},status=404)
+            return Response(self.serialize(contact))
+        qs=SMSContact.objects.select_related('team').all()
+        if request.query_params.get('include_inactive')!='1':qs=qs.filter(is_active=True)
+        term=request.query_params.get('q','').strip()[:100]
+        if term:qs=qs.filter(Q(name__icontains=term)|Q(phone_number__icontains=term)|Q(team__name__icontains=term))
+        team_id=request.query_params.get('team_id','').strip()
+        if team_id:
+            try:qs=qs.filter(team_id=int(team_id))
+            except ValueError:return Response({'detail':'شناسه تیم معتبر نیست.'},status=400)
+        return Response({'count':qs.count(),'results':[self.serialize(item) for item in qs.order_by('name','pk')[:500]]})
+
+    def post(self,request,pk=None):
+        if pk is None:return self.save_contact(request)
+        contact=SMSContact.objects.filter(pk=pk).first()
+        if not contact:return Response({'detail':'مخاطب پیدا نشد.'},status=404)
+        if request.method=='DELETE':
+            contact.is_active=False;contact.save(update_fields=['is_active','updated_at'])
+            return Response(status=204)
+        return self.save_contact(request,contact)
+
+    def patch(self,request,pk):
+        return self.post(request,pk)
+
+    def delete(self,request,pk):
+        return self.post(request,pk)
+
+    def save_contact(self,request,contact=None):
+        creating=contact is None
+        data=request.data
+        name=str(data.get('name',contact.name if contact else '')).strip()
+        if not name:return Response({'name':'نام مخاطب الزامی است.'},status=400)
+        try:phone=normalize_phone(data.get('phone_number',data.get('phone',contact.phone_number if contact else '')))
+        except ValueError as exc:return Response({'phone_number':str(exc)},status=400)
+        team_id=data.get('team_id',contact.team_id if contact else None)
+        team=None
+        if team_id not in (None,''):
+            try:team=StaffTeam.objects.filter(pk=int(team_id),is_active=True).first()
+            except (ValueError,TypeError):team=None
+            if not team:return Response({'team_id':'تیم فعال انتخاب‌شده معتبر نیست.'},status=400)
+        if SMSContact.objects.filter(phone_number=phone).exclude(pk=contact.pk if contact else None).exists():
+            return Response({'phone_number':'این شماره در دفترچه تلفن ثبت شده است.'},status=400)
+        if creating:contact=SMSContact()
+        contact.name=name;contact.phone_number=phone;contact.team=team
+        if 'notes' in data:contact.notes=str(data.get('notes') or '').strip()[:300]
+        if 'is_active' in data:contact.is_active=bool(data.get('is_active'))
+        contact.save()
+        return Response(self.serialize(contact),status=201 if creating else 200)
 
 
 class CampaignListView(AccessView):
@@ -408,7 +492,7 @@ class CampaignListView(AccessView):
                     return Response({'message_template':'نام متغیرهای Keywords معتبر نیست.'},status=400)
             try:render_template(template,{key:'نمونه' for key in {'name','code','sales','product_name','product_link','representative_name','representative_code','last_month_sales','discount_percent'}})
             except ValueError as exc:return Response({'message_template':str(exc)},status=400)
-        if filters.get('audience')=='staff':
+        if filters.get('audience') in ('staff','contacts'):
             used_sources={item['source'] for item in pattern.variables} if pattern else set(re.findall(r'%([^%]+)%',template))
             if used_sources & {'code','sales','representative_code','last_month_sales'}:
                 return Response({'message_template':'کد نماینده و فروش فقط برای مخاطبان نماینده در دسترس است.'},status=400)
@@ -452,7 +536,7 @@ def build_campaign_preview(campaign):
     token_pairs=re.findall(r'%([^%]+)%|\{([^{}]+)\}',campaign.message_template)
     requested={a or b for a,b in token_pairs};preview=[];excluded=0
 
-    def append_target(phone,name,code='',representative=None,user=None):
+    def append_target(phone,name,code='',representative=None,user=None,contact=None):
         nonlocal excluded
         if not phone:excluded+=1;return
         if representative:
@@ -480,13 +564,19 @@ def build_campaign_preview(campaign):
             message=render_template(campaign.message_template,values)
         if any(len(value)>500 for value in attrs.values()):excluded+=1;return
         preview.append({'representative_id':representative.pk if representative else None,'user_id':user.pk if user else None,
-            'recipient_name':name,'phone_number':phone,'message':message,'attributes':attrs})
+            'contact_id':contact.pk if contact else None,'recipient_name':name,'phone_number':phone,'message':message,'attributes':attrs})
 
     if audience=='staff':
         users=User.objects.filter(is_staff=True,is_active=True)
         if filters.get('user_ids') is not None:users=users.filter(pk__in=filters['user_ids'])
         for user in users.order_by('pk'):
             append_target(user.phone,user.get_full_name().strip() or user.username,user=user)
+    elif audience=='contacts':
+        contacts=SMSContact.objects.filter(is_active=True).select_related('team')
+        if filters.get('contact_ids') is not None:contacts=contacts.filter(pk__in=filters['contact_ids'])
+        if filters.get('team_id') is not None:contacts=contacts.filter(team_id=filters['team_id'],team__is_active=True)
+        for contact in contacts.order_by('pk'):
+            append_target(contact.phone_number,contact.name,contact=contact)
     else:
         qs=Representative.objects.filter(status=filters.get('status','active')).select_related('user')
         for key in ('province','city'):
@@ -550,12 +640,15 @@ class CampaignActionView(AccessView):
                     if campaign.status!='draft':return Response({'detail':'Campaign is no longer a draft.'},status=409)
                     rep_ids=[item['representative_id'] for item in campaign.preview_snapshot if item.get('representative_id')]
                     user_ids=[item['user_id'] for item in campaign.preview_snapshot if item.get('user_id')]
+                    contact_ids=[item['contact_id'] for item in campaign.preview_snapshot if item.get('contact_id')]
                     reps={rep.pk:rep for rep in Representative.objects.filter(pk__in=rep_ids,status='active')}
                     users={user.pk:user for user in User.objects.filter(pk__in=user_ids,is_staff=True,is_active=True)}
-                    if len(reps)!=len(rep_ids) or len(users)!=len(user_ids):return Response({'detail':'یکی از مخاطبان پیش‌نمایش دیگر در دسترس نیست.'},status=409)
+                    contacts={contact.pk:contact for contact in SMSContact.objects.filter(pk__in=contact_ids,is_active=True)}
+                    if len(reps)!=len(rep_ids) or len(users)!=len(user_ids) or len(contacts)!=len(contact_ids):return Response({'detail':'یکی از مخاطبان پیش‌نمایش دیگر در دسترس نیست.'},status=409)
                     for row in campaign.preview_snapshot:
                         SMSCampaignRecipient.objects.create(campaign=campaign,representative=reps.get(row.get('representative_id')),
-                            recipient_user=users.get(row.get('user_id')),recipient_name=row['recipient_name'],phone_number=row['phone_number'],
+                            recipient_user=users.get(row.get('user_id')),recipient_contact=contacts.get(row.get('contact_id')),
+                            recipient_name=row['recipient_name'],phone_number=row['phone_number'],
                             rendered_message=row['message'],attributes=row.get('attributes',{}))
                     campaign.status='approved';campaign.audience_frozen_at=timezone.now();campaign.approved_by=request.user;campaign.approved_at=timezone.now();campaign.save()
                 return Response({'status':'approved','recipient_count':len(campaign.preview_snapshot)})
@@ -621,8 +714,9 @@ class CampaignRecipientsView(AccessView):
             qs=SMSCampaignRecipient.objects.filter(campaign_id=pk)
             stats=list(qs.values('status').annotate(count=Count('id')))
             return Response({'results':stats})
-        qs=SMSCampaignRecipient.objects.filter(campaign_id=pk).select_related('representative','recipient_user').order_by('pk')
+        qs=SMSCampaignRecipient.objects.filter(campaign_id=pk).select_related('representative','recipient_user','recipient_contact').order_by('pk')
         return Response({'results':[{'id':x.pk,'representative':x.recipient_name or (x.representative.contact_name if x.representative_id else ''),
+            'contact':x.recipient_contact.name if x.recipient_contact_id else '',
             'code':x.representative.code if x.representative_id else '','phone':x.phone_number,'message':x.rendered_message,'status':x.status,
             'provider_request_id':x.provider_request_id,'error':x.error_message} for x in qs]})
 

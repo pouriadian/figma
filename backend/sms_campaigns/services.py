@@ -247,11 +247,14 @@ def process_pending(limit=50):
                 row.save(update_fields=['status', 'attempts', 'updated_at'])
             SMSCampaign.objects.filter(pk=first.campaign_id, status='queued').update(status='processing')
             claimed_ids = [row.pk for row in claimed]
-        items = list(SMSCampaignRecipient.objects.filter(pk__in=claimed_ids).select_related('representative', 'recipient_user', 'campaign', 'campaign__pattern'))
+        items = list(SMSCampaignRecipient.objects.filter(pk__in=claimed_ids).select_related('representative', 'recipient_user', 'recipient_contact', 'campaign', 'campaign__pattern'))
         eligible = []
         for item in items:
             if item.recipient_user_id and (not item.recipient_user.is_active or not item.recipient_user.is_staff):
                 SMSCampaignRecipient.objects.filter(pk=item.pk, status='processing').update(status='canceled', error_message='Panel account is no longer active')
+                continue
+            if item.recipient_contact_id and not item.recipient_contact.is_active:
+                SMSCampaignRecipient.objects.filter(pk=item.pk, status='processing').update(status='canceled', error_message='Contact is no longer active')
                 continue
             if item.representative_id:
                 from partners.models import RepresentativeProfile

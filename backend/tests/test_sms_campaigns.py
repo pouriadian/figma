@@ -8,9 +8,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
-from accounts.models import Representative, User
+from accounts.models import Representative, StaffTeam, User
 from partners.models import RepresentativeProfile
-from sms_campaigns.models import SalesImportBatch, SalesSnapshot, DiscountRule, RepresentativeReward, SMSCampaign, SMSCampaignRecipient, SMSPattern
+from sms_campaigns.models import SalesImportBatch, SalesSnapshot, DiscountRule, RepresentativeReward, SMSCampaign, SMSCampaignRecipient, SMSPattern, SMSContact
 from sms_campaigns.services import process_pending, farazsms_send, render_message
 
 
@@ -138,6 +138,43 @@ class SMSCampaignWorkflowTests(TestCase):
         from sms_campaigns.services import normalize_phone
         for value in ('09121234567','+989121234567','989121234567','00989121234567','9121234567','۰۹۱۲۱۲۳۴۵۶۷'):
             self.assertEqual(normalize_phone(value),'09121234567')
+
+    def test_staff_contact_campaign_preview_and_approval_do_not_send_sms(self):
+        self.grant('manage_sms_contacts','manage_sms_campaigns','approve_sms_campaign','view_sms_results')
+        team=StaffTeam.objects.create(name='پرسنل')
+        contact=SMSContact.objects.create(name='خانم قفاری',phone_number='09362144213',team=team)
+        created=self.client.post('/api/v1/manage/sms/contacts/',{
+            'name':'آقای رضایی','phone_number':'09907253800','team_id':team.pk,
+        },format='json')
+        self.assertEqual(created.status_code,201,created.data)
+        campaign=self.client.post('/api/v1/manage/sms/campaigns/',{
+            'name':'Staff announcement','message_template':'سلام %name% عزیز، تعطیل هستیم.',
+            'send_method':'keywords','filters':{'audience':'contacts','team_id':team.pk},
+        },format='json')
+        self.assertEqual(campaign.status_code,201,campaign.data)
+        preview=self.client.post(f"/api/v1/manage/sms/campaigns/{campaign.data['id']}/preview/",{},format='json')
+        self.assertEqual(preview.status_code,200,preview.data)
+        self.assertEqual(preview.data['count'],2)
+        self.assertEqual(SMSCampaignRecipient.objects.count(),0)
+        approved=self.client.post(f"/api/v1/manage/sms/campaigns/{campaign.data['id']}/approve/",{},format='json')
+        self.assertEqual(approved.status_code,200,approved.data)
+        recipients=SMSCampaignRecipient.objects.filter(campaign_id=campaign.data['id'])
+        self.assertEqual(recipients.count(),2)
+        self.assertTrue(recipients.filter(recipient_contact=contact,rendered_message='سلام خانم قفاری عزیز، تعطیل هستیم.').exists())
+        self.assertEqual(approved.data['status'],'approved')
+
+    def test_contact_phone_is_normalized_and_duplicate_is_rejected(self):
+        self.grant('manage_sms_contacts')
+        team=StaffTeam.objects.create(name='دفترچه')
+        first=self.client.post('/api/v1/manage/sms/contacts/',{
+            'name':'Contact','phone_number':'+989362144213','team_id':team.pk,
+        },format='json')
+        self.assertEqual(first.status_code,201,first.data)
+        self.assertEqual(first.data['phone_number'],'09362144213')
+        duplicate=self.client.post('/api/v1/manage/sms/contacts/',{
+            'name':'Duplicate','phone_number':'09362144213','team_id':team.pk,
+        },format='json')
+        self.assertEqual(duplicate.status_code,400)
 
     def test_unknown_message_variables_are_rejected(self):
         with self.assertRaises(ValueError):render_message('Hi {discount_code}',self.rep)

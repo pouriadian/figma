@@ -82,6 +82,24 @@ class SMSPattern(TimestampedModel):
     approved_at = models.DateTimeField(null=True, blank=True)
 
 
+class SMSContact(TimestampedModel):
+    name = models.CharField('نام مخاطب', max_length=160)
+    phone_number = models.CharField('شماره همراه', max_length=24, unique=True, db_index=True)
+    team = models.ForeignKey('accounts.StaffTeam', on_delete=models.PROTECT, related_name='sms_contacts',
+                             null=True, blank=True, verbose_name='تیم')
+    is_active = models.BooleanField('فعال', default=True, db_index=True)
+    notes = models.CharField('یادداشت', max_length=300, blank=True)
+
+    class Meta:
+        ordering = ['name', 'pk']
+        verbose_name = 'مخاطب دفترچه تلفن'
+        verbose_name_plural = 'مخاطبان دفترچه تلفن'
+        permissions = [('manage_sms_contacts', 'Can manage SMS contact book')]
+
+    def __str__(self):
+        return f'{self.name} | {self.phone_number}'
+
+
 class SMSCampaign(TimestampedModel):
     class State(models.TextChoices):
         DRAFT = 'draft', 'Draft'
@@ -121,6 +139,8 @@ class SMSCampaignRecipient(TimestampedModel):
     campaign = models.ForeignKey(SMSCampaign, on_delete=models.CASCADE, related_name='recipients')
     representative = models.ForeignKey('accounts.Representative', on_delete=models.PROTECT, related_name='sms_campaign_recipients', null=True, blank=True)
     recipient_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name='sms_campaign_recipients')
+    recipient_contact = models.ForeignKey(SMSContact, on_delete=models.PROTECT, null=True, blank=True,
+                                          related_name='sms_campaign_recipients')
     recipient_name = models.CharField(max_length=160, blank=True)
     phone_number = models.CharField(max_length=24)
     rendered_message = models.TextField()
@@ -136,7 +156,12 @@ class SMSCampaignRecipient(TimestampedModel):
         constraints = [
             models.UniqueConstraint(fields=['campaign', 'representative'], condition=Q(representative__isnull=False), name='sms_campaign_unique_recipient'),
             models.UniqueConstraint(fields=['campaign', 'recipient_user'], condition=Q(recipient_user__isnull=False), name='sms_campaign_unique_user_recipient'),
-            models.CheckConstraint(condition=(Q(representative__isnull=False, recipient_user__isnull=True) | Q(representative__isnull=True, recipient_user__isnull=False)), name='sms_campaign_exactly_one_recipient'),
+            models.UniqueConstraint(fields=['campaign', 'recipient_contact'], condition=Q(recipient_contact__isnull=False), name='sms_campaign_unique_contact_recipient'),
+            models.CheckConstraint(condition=(
+                Q(representative__isnull=False, recipient_user__isnull=True, recipient_contact__isnull=True) |
+                Q(representative__isnull=True, recipient_user__isnull=False, recipient_contact__isnull=True) |
+                Q(representative__isnull=True, recipient_user__isnull=True, recipient_contact__isnull=False)
+            ), name='sms_campaign_exactly_one_recipient'),
         ]
         permissions = [('approve_sms_campaign', 'Can approve SMS campaigns'), ('manage_sms_campaigns', 'Can manage SMS campaigns'), ('send_sms_campaign', 'Can send approved SMS campaigns'), ('view_sms_results', 'Can view SMS campaign results'), ('approve_sms_reward', 'Can approve rewards'), ('activate_sms_reward', 'Can activate approved rewards')]
 
