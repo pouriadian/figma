@@ -11,13 +11,6 @@ backend/private_media/
 backend/staticfiles/
 .venv/
 
-**/public/
-!frontend/public/
-frontend/public/*
-!frontend/public/assets/
-frontend/public/assets/*
-!frontend/public/assets/home/
-frontend/public/assets/home/*
-!frontend/public/assets/home/home-organizational-values.png
+
 *.log
 .DS_Store
