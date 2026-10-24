@@ -22,6 +22,23 @@ export type ProductApiItem = CatalogProduct & {
 type Page<T> = {results:T[]; count:number};
 export type ProductCategory={id:number;name:string;slug:string};
 
+const snapshotProducts = snapshot.products as ProductApiItem[];
+
+/**
+ * Product uploads live on Django. When the frontend is presented without a
+ * deployed backend, use the matching checked-in asset instead of leaving a
+ * broken /uploads URL in the product card.
+ */
+function withLocalProductImage(product:ProductApiItem):ProductApiItem {
+  const local = snapshotProducts.find(item => item.id === product.id || item.slug === product.slug);
+  const image = product.image || '';
+  const backendImage = image.startsWith('/uploads/') || image.startsWith('/media/');
+  return {
+    ...product,
+    image: (backendImage || !image) && local?.image ? local.image : image,
+  };
+}
+
 async function getJson<T>(path:string, seconds=60):Promise<T|null> {
   try {
     const res = await fetch(`${BASE}/api/v1/${path}`, {next:{revalidate:seconds}, signal:AbortSignal.timeout(6000)});
@@ -34,21 +51,21 @@ async function getJson<T>(path:string, seconds=60):Promise<T|null> {
 
 export async function getCategories():Promise<ProductCategory[]> {
   const data=await getJson<ProductCategory[]>('categories/',60);
-  return Array.isArray(data)?data:snapshot.categories;
+  return Array.isArray(data)&&data.length>0?data:snapshot.categories;
 }
 
 export async function getProducts():Promise<ProductApiItem[]> {
   const data = await getJson<Page<ProductApiItem>>('products/?page_size=100', 60);
-  if (data?.results) return data.results;
+  if (data?.results?.length) return data.results.map(withLocalProductImage);
   // Temporary read-only snapshot exported from the actual local Django database.
   // Remove this fallback once the production Django API and database are available.
-  return snapshot.products;
+  return snapshotProducts;
 }
 
 export async function getProduct(slug:string):Promise<ProductApiItem|null> {
   const fromDb = await getJson<ProductApiItem>(`products/${encodeURIComponent(slug)}/`, 0);
-  if (fromDb) return fromDb;
-  return snapshot.products.find(p => p.slug === slug) ?? null;
+  if (fromDb) return withLocalProductImage(fromDb);
+  return snapshotProducts.find(p => p.slug === slug) ?? null;
 }
 
 export async function getContent(kind:string):Promise<CMSItem[]> {
