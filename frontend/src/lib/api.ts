@@ -1,6 +1,7 @@
 /** Server-only Django API client. Never expose API_INTERNAL_URL to the browser. */
 import 'server-only';
 import type {CatalogProduct} from '@/lib/products-catalog';
+import snapshot from '@/lib/faromid-products-snapshot.json';
 
 const BASE = (process.env.API_INTERNAL_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
@@ -33,20 +34,21 @@ async function getJson<T>(path:string, seconds=60):Promise<T|null> {
 
 export async function getCategories():Promise<ProductCategory[]> {
   const data=await getJson<ProductCategory[]>('categories/',60);
-  return Array.isArray(data)?data:[];
+  return Array.isArray(data)?data:snapshot.categories;
 }
 
 export async function getProducts():Promise<ProductApiItem[]> {
   const data = await getJson<Page<ProductApiItem>>('products/?page_size=100', 60);
   if (data?.results) return data.results;
-  // Never invent published products when the database is unavailable.
-  return [];
+  // Temporary read-only snapshot exported from the actual local Django database.
+  // Remove this fallback once the production Django API and database are available.
+  return snapshot.products;
 }
 
 export async function getProduct(slug:string):Promise<ProductApiItem|null> {
   const fromDb = await getJson<ProductApiItem>(`products/${encodeURIComponent(slug)}/`, 0);
   if (fromDb) return fromDb;
-  return null;
+  return snapshot.products.find(p => p.slug === slug) ?? null;
 }
 
 export async function getContent(kind:string):Promise<CMSItem[]> {
