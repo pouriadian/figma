@@ -83,7 +83,7 @@ if not exist "%FRONTEND%\.env.local" (
   copy /Y "%FRONTEND%\.env.local.example" "%FRONTEND%\.env.local" >nul
   if errorlevel 1 goto failed
 )
-"%VENV_PY%" -c "import os,pathlib,secrets,re; root=pathlib.Path(os.environ['FAROMID_ROOT']); be=root/'backend'/'.env'; fe=root/'frontend'/'.env.local'; a=be.read_text(encoding='utf-8-sig'); b=fe.read_text(encoding='utf-8-sig'); get=lambda s,k:next((x.split('=',1)[1].strip() for x in s.splitlines() if x.startswith(k+'=')),''); put=lambda s,k,v:re.sub(r'(?m)^'+re.escape(k)+r'=.*$',lambda m:k+'='+v,s) if re.search(r'(?m)^'+re.escape(k)+r'=',s) else s.rstrip('\r\n')+'\n'+k+'='+v+'\n'; key=get(a,'DJANGO_SECRET_KEY'); key=secrets.token_urlsafe(48) if not key or any(x in key.upper() for x in ('CHANGE_ME','LOCAL_DEV_ONLY','INSECURE','REPLACE_ME')) else key; proxy=get(a,'API_PROXY_SECRET'); proxy=secrets.token_hex(32) if not proxy or any(x in proxy.upper() for x in ('CHANGE_ME','LOCAL_DEV_ONLY','REPLACE_ME')) else proxy; a=put(put(a,'DJANGO_SECRET_KEY',key),'API_PROXY_SECRET',proxy); a=put(a,'DJANGO_DEBUG','1'); b=put(put(put(b,'API_PROXY_SECRET',proxy),'API_INTERNAL_URL','http://127.0.0.1:8000'),'NEXT_PUBLIC_SITE_URL','http://localhost:3000'); be.write_text(a,encoding='utf-8'); fe.write_text(b,encoding='utf-8'); print('Local configuration ready. API proxy secrets match.')"
+"%VENV_PY%" -c "import os,pathlib,secrets,re; root=pathlib.Path(os.environ['FAROMID_ROOT']); be=root/'backend'/'.env'; fe=root/'frontend'/'.env.local'; a=be.read_text(encoding='utf-8-sig'); b=fe.read_text(encoding='utf-8-sig'); get=lambda s,k:next((x.split('=',1)[1].strip() for x in s.splitlines() if x.startswith(k+'=')),''); put=lambda s,k,v:re.sub(r'(?m)^'+re.escape(k)+r'=.*$',lambda m:k+'='+v,s) if re.search(r'(?m)^'+re.escape(k)+r'=',s) else s.rstrip('\r\n')+'\n'+k+'='+v+'\n'; key=get(a,'DJANGO_SECRET_KEY'); key=secrets.token_urlsafe(48) if not key or any(x in key.upper() for x in ('CHANGE_ME','LOCAL_DEV_ONLY','INSECURE','REPLACE_ME')) else key; proxy=get(a,'API_PROXY_SECRET'); proxy=secrets.token_hex(32) if not proxy or any(x in proxy.upper() for x in ('CHANGE_ME','LOCAL_DEV_ONLY','REPLACE_ME')) else proxy; a=put(put(a,'DJANGO_SECRET_KEY',key),'API_PROXY_SECRET',proxy); a=put(a,'DJANGO_DEBUG','1'); b=put(put(put(b,'API_PROXY_SECRET',proxy),'API_INTERNAL_URL','http://127.0.0.1:8000'),'NEXT_PUBLIC_SITE_URL','http://localhost:1255'); be.write_text(a,encoding='utf-8'); fe.write_text(b,encoding='utf-8'); print('Local configuration ready. API proxy secrets match.')"
 if errorlevel 1 goto failed
 
 echo [4/7] Checking Django and preparing the database...
@@ -137,8 +137,8 @@ echo.
 echo ===============================================
 echo  Setup complete. Starting Django and Next.js...
 echo ===============================================
-echo  Website: http://localhost:3000
-echo  Admin:   http://localhost:3000/panel
+echo  Website: http://localhost:1255
+echo  Admin:   http://localhost:1255/panel
 echo ===============================================
 echo.
 call "%ROOT%\start-dev.cmd"

@@ -21,12 +21,12 @@ echo Launching Django and Next.js in separate CMD windows...
 echo.
 start "FAROMID - Django :8000" /D "%BACKEND%" cmd /k ""%VENV_PY%" manage.py runserver 127.0.0.1:8000"
 if errorlevel 1 goto failed
-start "FAROMID - Next.js :3000" /D "%FRONTEND%" cmd /k "npm.cmd run dev"
+start "FAROMID - Next.js :1255" /D "%FRONTEND%" cmd /k "npm.cmd run dev -- -p 1255"
 if errorlevel 1 goto failed
 
 echo.
-echo  Website: http://localhost:3000
-echo  Admin:   http://localhost:3000/panel
+echo  Website: http://localhost:1255
+echo  Admin:   http://localhost:1255/panel
 echo  Health:  http://127.0.0.1:8000/health/
 echo.
 echo Two terminal windows were launched. Wait for both servers to be ready.
