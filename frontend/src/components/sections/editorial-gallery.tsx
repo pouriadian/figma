@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
+import {MediaImage} from '@/components/ui/media-image';
 import Image from 'next/image';
 import {ArrowUpLeft, ChevronLeft, ChevronRight, RotateCcw, X, ZoomIn, ZoomOut} from 'lucide-react';
 
@@ -21,7 +22,7 @@ export function EditorialGallery({items,zoomable=false,pageSize=DEFAULT_PAGE_SIZ
  return <>
    <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
       {pageItems.map((item,i)=>{const itemIndex=(page-1)*pageSize+i;return <button type="button" key={`${item.src}-${itemIndex}`} onClick={()=>setSelected(itemIndex)} className={`group relative aspect-[.9] min-h-[145px] overflow-hidden rounded-[16px] bg-[#e2e4df] text-right sm:aspect-auto sm:min-h-[350px] sm:rounded-[24px] ${i%5===0&&pageItems.length>=5?'lg:row-span-2 lg:min-h-[725px]':''}`} aria-label={`مشاهده تصویر ${item.title}`}>
-        <Image fill src={item.src} alt={item.title} sizes="(max-width:640px) 50vw, (max-width:1024px) 50vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.045]"/>
+        <MediaImage src={item.src} alt={item.title} sizes="(max-width:640px) 50vw, (max-width:1024px) 50vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.045]"/>
         <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/0 to-transparent"/><div className="absolute right-3 bottom-3 left-3 flex items-end justify-between gap-2 text-white sm:right-6 sm:bottom-6 sm:left-6 sm:gap-4"><div className="min-w-0"><span className="text-[8px] tracking-wider text-white/70 [direction:ltr] sm:text-[10px]">FAROMID / {String(itemIndex+1).padStart(2,'0')}</span><h2 className="mt-1 mb-0 line-clamp-2 text-[11px] leading-5 font-semibold sm:mt-2 sm:text-base sm:leading-normal">{item.title}</h2></div><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/65 bg-black/15 transition-all group-hover:bg-white group-hover:text-[#252725] sm:h-10 sm:w-10"><ArrowUpLeft size={15}/></span></div>
       </button>})}
    </div>

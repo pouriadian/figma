@@ -12,11 +12,13 @@ export function HomeLoadingGate({children}:{children:ReactNode}) {
     document.body.style.overflow='hidden';
     const timer=window.setTimeout(()=>{
       setLoading(false);
+      document.body.classList.add('home-intro-ready');
       document.body.style.overflow=previousOverflow;
     },2000);
 
     return ()=>{
       window.clearTimeout(timer);
+      document.body.classList.remove('home-intro-ready');
       document.body.style.overflow=previousOverflow;
     };
   },[]);

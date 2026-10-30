@@ -2,10 +2,11 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
+import json
 from rest_framework.test import APIClient
 from analytics.models import TrafficEvent
 from accounts.models import Representative, StaffTeam
-from catalog.models import Product, ProductCategory
+from catalog.models import Product, ProductCategory, Texture
 from crm.models import Inquiry
 from content.models import SitePage, SiteSection, MediaAsset
 
@@ -118,6 +119,23 @@ class StaffApiTests(TestCase):
         self.product.refresh_from_db()
         self.assertEqual(self.product.name, 'Edited product')
         self.assertEqual(client.get('/api/v1/products/sample-product/').data['name'], 'Edited product')
+
+    def test_product_texture_relations_can_be_set_and_cleared_from_multipart(self):
+        texture = Texture.objects.create(name='Oak', slug='oak', code='TEX-OAK')
+        client = self.client_for(self.admin)
+        url = f'/api/v1/manage/products/{self.product.pk}/'
+
+        linked = client.patch(url, {'textures': json.dumps([texture.pk])}, format='multipart')
+        self.assertEqual(linked.status_code, 200, linked.data)
+        self.product.refresh_from_db()
+        self.assertEqual(list(self.product.textures.values_list('pk', flat=True)), [texture.pk])
+        self.assertIn(self.product.pk, texture.products.values_list('pk', flat=True))
+
+        cleared = client.patch(url, {'textures': '[]'}, format='multipart')
+        self.assertEqual(cleared.status_code, 200, cleared.data)
+        self.product.refresh_from_db()
+        self.assertFalse(self.product.textures.exists())
+        self.assertTrue(Product.objects.filter(pk=self.product.pk).exists())
 
     def test_draft_section_requires_publish_and_does_not_change_original_asset(self):
         page = SitePage.objects.create(key='home', name='خانه')

@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import {Plus} from 'lucide-react';
+import {HomeHeroBlades} from '@/components/sections/home-hero-blades';
 import {asset} from '@/lib/assets';
-import {brand} from '@/lib/media';
 import type {CMSSection} from '@/lib/site-pages';
 
 const HERO_TITLE = 'فرامید تولید کننده ام دی اف ملامینه، سینکرونایز، فوق برجسته و سوپرمات';
@@ -53,15 +53,7 @@ function DesktopHomeHero({content}: {content?:CMSSection}) {
         />
       </div>
       <div className="absolute inset-y-0 left-0 w-[37.7%] bg-[#0d0d0d]" />
-      <Image
-        src={brand.heroStripes}
-        alt=""
-        aria-hidden="true"
-        width={472}
-        height={360}
-        priority
-        className="faromid-hero-stripes faromid-hero-stripes--desktop absolute top-[30.6%] left-[4.4%] h-auto w-[27.6%] select-none"
-      />
+      <HomeHeroBlades className="absolute top-[30.6%] left-[4.4%] h-auto w-[27.6%] select-none"/>
       <h1
         className="absolute top-[80.6%] left-[6.25%] m-0 w-[23.5%] text-center text-[clamp(11px,1.12vw,19px)] leading-[1.9] font-bold text-white"
         dir="rtl"
@@ -94,15 +86,7 @@ function MobileHomeHero({content}: {content?:CMSSection}) {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/55 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-[52%] bg-[#0d0d0d]" />
       <HeroProductHighlight mobile href={content?.link_url||"/products"} label={content?.link_label||"Melamine MDF"}/>
-      <Image
-        src={brand.heroStripes}
-        alt=""
-        aria-hidden="true"
-        width={472}
-        height={360}
-        priority
-        className="faromid-hero-stripes faromid-hero-stripes--mobile absolute inset-x-0 bottom-[100px] mx-auto h-auto w-[min(50vw,210px)] select-none sm:bottom-[110px] sm:w-[min(48vw,270px)]"
-      />
+      <HomeHeroBlades className="absolute inset-x-0 bottom-[100px] mx-auto h-auto w-[min(50vw,210px)] select-none sm:bottom-[110px] sm:w-[min(48vw,270px)]"/>
       <div className="absolute right-[6%] bottom-[25px] left-[6%] mx-auto max-w-[460px] sm:bottom-[30px]">
         <span aria-hidden="true" className="absolute -top-3 right-0 h-6 w-7 border-t-2 border-r-2 border-[#ec1c24]" />
         <h1 className="m-0 px-2 text-center text-[clamp(13px,4vw,17px)] leading-[1.8] font-bold text-white sm:px-5 sm:text-lg" dir="rtl">{content?.title||HERO_TITLE}</h1>

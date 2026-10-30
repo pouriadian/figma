@@ -1,13 +1,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import {Facebook, Instagram, Linkedin, Mail, MapPin, Phone, Twitter} from 'lucide-react';
+import {Instagram, Mail, MapPin, Phone} from 'lucide-react';
 import {brand} from '@/lib/media';
 import {CONTACT_LOCATIONS,links} from '@/lib/constants';
 import {Container} from '@/components/ui/brand-ui';
 import {FooterLinksModal} from './footer-links-modal';
 
 export function SiteFooter() {
-  const socialIcons=[{label:'Facebook',Icon:Facebook},{label:'Twitter',Icon:Twitter},{label:'Instagram',Icon:Instagram},{label:'LinkedIn',Icon:Linkedin}];
+  const instagramUrl='https://www.google.com/goto?url=CAESawHrOzAVopEdEajOmIDwwqShDDDVF6vhvYXVSnXx3mDB3GN-KSnhWhW5nOojz7q03iwPJkbK80h7_r9AP6cBfeSq2RCWot9awW60MkfwmtAmqXDJE-8C-RZlsyqDZaXs0qx49vE5zbLdm2dK';
   return <footer className="bg-[#1d201f] pt-10 text-white md:pt-14" dir="rtl">
     <Container>
       <div dir="ltr" className="grid gap-8 border-b border-white/10 pb-8 md:grid-cols-[.9fr_1fr_1.3fr] md:gap-10 md:pb-10">
@@ -17,7 +17,7 @@ export function SiteFooter() {
           {CONTACT_LOCATIONS.map(location=><p key={location.label} className="m-0 flex items-start gap-2.5"><MapPin size={15} className="mt-1 shrink-0 text-white/40"/><span><b className="font-medium text-white/75">{location.label}:</b> {location.address}</span></p>)}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/10 pt-2.5"><a href="tel:+982178328000" className="inline-flex items-center gap-2 transition-colors hover:text-white"><Phone size={14}/><span dir="ltr">021 7832 8000</span></a><a href="mailto:info@faromid.com" className="inline-flex items-center gap-2 transition-colors hover:text-white"><Mail size={14}/><span dir="ltr">info@faromid.com</span></a></div>
           <details className="group border-t border-white/10 pt-2"><summary className="w-fit cursor-pointer text-[11px] text-white/55 transition hover:text-white">شماره‌های بیشتر و فکس</summary><div className="mt-2 grid gap-1.5 rounded-xl bg-white/[.04] p-3 sm:grid-cols-2"><span>فکس دفتر مرکزی: <bdi dir="ltr">021 2282 3107</bdi></span><span>تلفن کارخانه: <bdi dir="ltr">021 3684 9085</bdi></span><span>تلفن کارخانه: <bdi dir="ltr">021 3684 9086</bdi></span><span>فکس کارخانه: <bdi dir="ltr">021 3684 9474</bdi></span></div></details>
-          <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-2.5"><span className="ml-1 text-[10px] text-white/40">شبکه‌های اجتماعی</span>{socialIcons.map(({label,Icon})=><span key={label} role="img" aria-label={label} title={label} dir="ltr" className="grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-white/[.04] text-white/65 transition-colors hover:border-white/30 hover:bg-white/[.09] hover:text-white"><Icon size={15} strokeWidth={1.8}/></span>)}</div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-2.5"><span className="ml-1 text-[10px] text-white/40">اینستاگرام فرامید</span><a href={instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="اینستاگرام فرامید" title="اینستاگرام فرامید" dir="ltr" className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-white/[.04] text-white/70 transition-colors hover:border-white/35 hover:bg-white/[.1] hover:text-white"><Instagram size={16} strokeWidth={1.8}/></a></div>
         </div></div>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-b border-white/10 py-4 text-[11px] text-white/55"><Link href="/representatives" className="transition hover:text-white">نمایندگان رسمی</Link><Link href="/representative/login" className="transition hover:text-white">ورود نمایندگان</Link><Link href="/collaboration" className="transition hover:text-white">همکاری سازمانی</Link><Link href="/track" className="transition hover:text-white">پیگیری درخواست</Link><Link href="/news" className="transition hover:text-white">اخبار</Link><Link href="/gallery" className="transition hover:text-white">پروژه‌ها</Link></div>

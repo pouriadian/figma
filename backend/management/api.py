@@ -24,7 +24,7 @@ from rest_framework.views import APIView
 from accounts.models import Representative, StaffTeam, User
 from partners.models import RepresentativeProfile
 from analytics.models import TrafficEvent
-from catalog.models import Product, ProductCategory, ProductImage
+from catalog.models import Product, ProductCategory, ProductImage, Texture
 from communications.models import Announcement, Delivery
 from content.models import (
     ContentEntry, MediaAsset, PageSEO, SitePage, SiteSection, SiteSectionImage,
@@ -37,6 +37,7 @@ MODULES = {
     'pages': 'content.view_sitepage',
     'media': 'content.view_mediaasset',
     'products': 'catalog.view_product',
+    'textures': 'catalog.view_texture',
     'categories': 'catalog.view_productcategory',
     'representatives': 'accounts.view_representative',
     'inquiries': 'crm.view_inquiry',
@@ -129,9 +130,36 @@ class ProductSerializer(serializers.ModelSerializer):
     cover_image = serializers.ImageField(required=False, allow_null=True)
     catalog_pdf = serializers.FileField(required=False, allow_null=True)
     images = serializers.SerializerMethodField()
+    textures = serializers.PrimaryKeyRelatedField(many=True, queryset=Texture.objects.all(), required=False)
     # Keep the existing JSON name for the admin frontend, but use actual accepted
     # analytics events rather than the legacy per-GET Product.view_count counter.
     view_count = serializers.IntegerField(source='recorded_views', read_only=True)
+
+    def to_internal_value(self, data):
+        # Product forms upload images as multipart data and encode the selected
+        # Many-to-Many texture IDs as JSON so an empty selection can clear links.
+        raw_textures = data.get('textures') if hasattr(data, 'get') else None
+        clear_textures = False
+        if isinstance(raw_textures, str):
+            try:
+                parsed_textures = json.loads(raw_textures)
+            except (TypeError, ValueError) as exc:
+                raise serializers.ValidationError({'textures': 'فهرست بافت‌ها معتبر نیست.'}) from exc
+            if not isinstance(parsed_textures, list):
+                raise serializers.ValidationError({'textures': 'فهرست بافت‌ها باید آرایه باشد.'})
+            data = data.copy()
+            if parsed_textures:
+                if hasattr(data, 'setlist'):
+                    data.setlist('textures', [str(value) for value in parsed_textures])
+                else:
+                    data['textures'] = parsed_textures
+            else:
+                data.pop('textures', None)
+                clear_textures = True
+        validated = super().to_internal_value(data)
+        if clear_textures:
+            validated['textures'] = []
+        return validated
 
     def get_images(self, obj):
         return [{'id': image.id, 'caption': image.caption,
@@ -144,7 +172,7 @@ class ProductSerializer(serializers.ModelSerializer):
                   'dimensions', 'description', 'technical_specs', 'cover_asset',
                   'cover_image', 'image', 'catalog_pdf', 'catalog_url', 'status',
                   'featured', 'sort_order', 'view_count', 'published_at',
-                  'seo_title', 'seo_description', 'canonical_url', 'images', 'created_at']
+                  'seo_title', 'seo_description', 'canonical_url', 'images', 'created_at', 'textures']
         read_only_fields = ['id', 'view_count', 'published_at', 'created_at']
 
     def validate(self, attrs):
@@ -168,6 +196,8 @@ class ProductViewSet(StaffViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        if self.request.query_params.get('ordering') == '-view_count':
+            queryset = queryset.order_by('-recorded_views', 'name')
         category_id = self.request.query_params.get('category', '').strip()
         if not category_id:
             return queryset
@@ -185,6 +215,23 @@ class ProductViewSet(StaffViewSet):
         if changed_asset and changed_asset != before_asset and not has_new_upload and obj.cover_image:
             obj.cover_image = ''
             obj.save(update_fields=['cover_image', 'updated_at'])
+
+
+class TextureSerializer(serializers.ModelSerializer):
+    image_url = serializers.CharField(read_only=True)
+    image = serializers.ImageField(required=False, allow_null=True)
+    products = serializers.PrimaryKeyRelatedField(many=True, queryset=Product.objects.all(), required=False)
+    class Meta:
+        model = Texture
+        fields = ['id','name','slug','code','category','description','technical_specs','image','image_url','products','is_published','seo_title','seo_description','canonical_url','created_at']
+        read_only_fields = ['id','image_url','created_at']
+
+
+class TextureViewSet(StaffViewSet):
+    queryset = Texture.objects.prefetch_related('products').all()
+    serializer_class = TextureSerializer
+    permission_prefix, model_name = 'catalog', 'texture'
+    search_fields = ['name','slug','code','category']
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -988,6 +1035,7 @@ class ManagerDashboardView(APIView):
 router = routers.DefaultRouter()
 router.register('categories', CategoryViewSet, basename='manage-categories')
 router.register('products', ProductViewSet, basename='manage-products')
+router.register('textures', TextureViewSet, basename='manage-textures')
 router.register('product-images', ProductImageViewSet, basename='manage-product-images')
 router.register('representatives', RepresentativeViewSet, basename='manage-representatives')
 router.register('inquiries', InquiryViewSet, basename='manage-inquiries')

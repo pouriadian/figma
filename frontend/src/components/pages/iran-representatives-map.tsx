@@ -8,7 +8,7 @@ import {canonicalProvinceName, IRAN_PROVINCES, type IranProvinceName} from '@/li
 import {IRAN_MAP_KEYS, mapKeyFromProvince, provinceFromMapKey} from '@/lib/iran-map-keys';
 import styles from './iran-representatives-map.module.css';
 
-const VectorIranMap=dynamic(()=>import('react-iran-map').then(module=>module.IranMap),{ssr:false,loading:()=> <div className={styles.mapSkeleton} role="status">در حال نمایش نقشه…</div>});
+const VectorIranMap=dynamic(()=>import('react-iran-map').then(module=>module.IranMap),{ssr:false,loading:()=> <div className={styles.mapSkeleton} role="status" aria-label="در حال بارگذاری نقشه"><svg viewBox="0 0 300 360" aria-hidden="true"><path d="M128 12 167 25 183 52 216 64 208 95 235 119 223 149 250 174 230 198 241 231 213 252 218 283 190 300 178 335 145 325 124 343 106 316 77 303 84 275 59 254 75 228 59 204 76 179 63 151 83 129 77 100 103 82 95 55 121 42Z"/></svg><span className="sr-only">در حال آماده‌سازی نقشه</span></div>});
 type Props={items:PublicRepresentative[];dataAvailable:boolean;selectedProvince:string;onProvinceChange:(province:string)=>void};
 const numberFa=new Intl.NumberFormat('fa-IR');
 

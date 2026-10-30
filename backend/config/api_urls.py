@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework_simplejwt.views import TokenRefreshView, TokenBlacklistView
 from accounts.api import LoginView, StaffLoginView, PortalProfileView, RepresentativeStatsView
-from catalog.api import ProductListView, ProductDetailView, CategoryListView
+from catalog.api import ProductListView, ProductDetailView, CategoryListView, TextureListView, TextureDetailView
 from crm.api import InquiryCreateView, InquiryTrackingView, JobApplicationCreateView, PortalInquiryListCreateView
 from communications.api import PortalNotificationListView, PortalNotificationReadView, PanelNotificationListView, PanelNotificationReadView
 from content.api import ContentListView, ContentDetailView, PageSEOView, SitePageView
@@ -30,6 +30,8 @@ urlpatterns = [
     path('categories/', CategoryListView.as_view()),
     path('products/', ProductListView.as_view()),
     path('products/<slug:slug>/', ProductDetailView.as_view()),
+    path('textures/', TextureListView.as_view()),
+    path('textures/<slug:slug>/', TextureDetailView.as_view()),
     path('inquiries/', InquiryCreateView.as_view()),
     path('track/<str:code>/', InquiryTrackingView.as_view()),
     path('applications/', JobApplicationCreateView.as_view()),

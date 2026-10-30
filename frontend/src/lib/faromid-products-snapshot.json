@@ -4,6 +4,51 @@
       "id": 1,
       "name": "کلین تاچ",
       "slug": "clean-touch"
+    },
+    {
+      "id": 2,
+      "name": "طرح چوب",
+      "slug": "wood"
+    },
+    {
+      "id": 3,
+      "name": "طرح سنگ",
+      "slug": "stone"
+    },
+    {
+      "id": 4,
+      "name": "طرح کتان",
+      "slug": "linen"
+    },
+    {
+      "id": 5,
+      "name": "طرح بتن",
+      "slug": "concrete"
+    },
+    {
+      "id": 6,
+      "name": "طرح چرم",
+      "slug": "leather"
+    },
+    {
+      "id": 7,
+      "name": "یونی کالر",
+      "slug": "uni-color"
+    },
+    {
+      "id": 8,
+      "name": "مات و آنتی فینگر",
+      "slug": "matte-anti-finger"
+    },
+    {
+      "id": 9,
+      "name": "فانتزی",
+      "slug": "fantasy"
+    },
+    {
+      "id": 10,
+      "name": "طرح متال",
+      "slug": "metal"
     }
   ],
   "products": [

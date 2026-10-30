@@ -4,7 +4,21 @@ from django.conf import settings
 from django.utils.html import format_html
 from django.contrib.admin import TabularInline
 from common.admin import BrandModelAdmin
-from .models import Product, ProductCategory, ProductImage
+from .models import Product, ProductCategory, ProductImage, Texture
+
+
+@admin.register(Texture)
+class TextureAdmin(BrandModelAdmin):
+    list_display = ('name', 'code', 'category', 'is_published')
+    list_filter = ('is_published', 'category')
+    search_fields = ('name', 'code', 'slug')
+    filter_horizontal = ('products',)
+    prepopulated_fields = {'slug': ('name',)}
+    fieldsets = (
+        ('اطلاعات بافت', {'fields': ('name', 'slug', 'code', 'category', 'description', 'technical_specs', 'products')}),
+        ('تصویر و انتشار', {'fields': ('image', 'is_published')}),
+        ('SEO', {'fields': ('seo_title', 'seo_description', 'canonical_url'), 'classes': ('collapse',)}),
+    )
 
 
 @admin.register(ProductCategory)

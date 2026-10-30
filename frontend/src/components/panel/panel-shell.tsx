@@ -21,6 +21,7 @@ export const NAV:{href:string;label:string;module:string;icon:LucideIcon;group:s
   {href:'/panel/pages', label:'صفحات سایت', module:'pages', icon:FileText, group:'content'},
   {href:'/panel/media', label:'رسانه و تصاویر', module:'media', icon:Image, group:'content'},
   {href:'/panel/products', label:'محصولات', module:'products', icon:Package, group:'content'},
+  {href:'/panel/textures', label:'بافت‌ها', module:'textures', icon:Image, group:'content'},
   {href:'/panel/content', label:'اخبار و گالری', module:'content', icon:FolderOpen, group:'content'},
   {href:'/panel/representatives', label:'نمایندگان', module:'representatives', icon:Users, group:'management'},
   {href:'/panel/inquiries', label:'درخواست‌ها', module:'inquiries', icon:ClipboardList, group:'management'},

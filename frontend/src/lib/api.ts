@@ -17,10 +17,12 @@ export type ProductApiItem = CatalogProduct & {
   category_name?:string; category_slug?:string; catalog_url?:string;
   seo_title?:string; seo_description?:string;
   images?:{id:number;url:string;caption:string}[];
+  textures?:TextureApiItem[];
 };
 
 type Page<T> = {results:T[]; count:number};
 export type ProductCategory={id:number;name:string;slug:string};
+export type TextureApiItem={id:number;name:string;slug:string;code:string;category:string;description:string;technical_specs:Record<string,unknown>;image:string;products_count?:number;products?:ProductApiItem[];seo_title?:string;seo_description?:string;is_demo?:boolean};
 
 async function getJson<T>(path:string, seconds=60):Promise<T|null> {
   try {
@@ -33,7 +35,7 @@ async function getJson<T>(path:string, seconds=60):Promise<T|null> {
 }
 
 export async function getCategories():Promise<ProductCategory[]> {
-  const data=await getJson<ProductCategory[]>('categories/',60);
+  const data=await getJson<ProductCategory[]>('categories/',0);
   return Array.isArray(data)&&data.length>0?data:snapshot.categories;
 }
 
@@ -49,6 +51,16 @@ export async function getProduct(slug:string):Promise<ProductApiItem|null> {
   const fromDb = await getJson<ProductApiItem>(`products/${encodeURIComponent(slug)}/`, 0);
   if (fromDb) return fromDb;
   return snapshot.products.find(p => p.slug === slug) ?? null;
+}
+
+export async function getTextures(search=''):Promise<TextureApiItem[]> {
+  const query=search?`?search=${encodeURIComponent(search)}`:'';
+  const data=await getJson<TextureApiItem[]>(`textures/${query}`,30);
+  return Array.isArray(data)?data:[];
+}
+
+export async function getTexture(slug:string):Promise<TextureApiItem|null> {
+  return getJson<TextureApiItem>(`textures/${encodeURIComponent(slug)}/`,30);
 }
 
 export async function getContent(kind:string):Promise<CMSItem[]> {

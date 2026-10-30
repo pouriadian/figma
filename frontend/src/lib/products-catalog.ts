@@ -9,6 +9,7 @@ export type CatalogProduct = {
   name?: string;
   code: string | number;
   dimensions: string;
+  view_count?: number;
 };
 
 const MODEL = 'CLEAN TOUCH';

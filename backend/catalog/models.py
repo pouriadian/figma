@@ -18,6 +18,14 @@ def _product_photo_path(instance, filename):
     return f'public/cms/pages/products/products-{section}-{code}-{uuid4().hex[:10]}{extension}'
 
 
+def _texture_photo_path(instance, filename):
+    code = re.sub(r'[^a-zA-Z0-9_-]', '-', getattr(instance, 'code', '') or 'texture').strip('-')[:45]
+    extension = Path(filename).suffix.lower()
+    if extension not in ('.jpg', '.jpeg', '.png', '.webp'):
+        extension = '.jpg'
+    return f'public/catalog/textures/{code or "texture"}-{uuid4().hex[:10]}{extension}'
+
+
 class ProductCategory(TimestampedModel):
     name = models.CharField('دسته', max_length=100)
     slug = models.SlugField('نشانی', max_length=120, unique=True, allow_unicode=True)
@@ -86,6 +94,30 @@ class Product(TimestampedModel, SEOFields):
     @property
     def catalog_url(self):
         return '/uploads/' + self.catalog_pdf.name.removeprefix('public/') if self.catalog_pdf else ''
+
+
+class Texture(TimestampedModel, SEOFields):
+    name = models.CharField('نام بافت', max_length=160)
+    slug = models.SlugField('نشانی', max_length=180, unique=True, allow_unicode=True)
+    code = models.CharField('کد بافت', max_length=60, unique=True)
+    category = models.CharField('دسته‌بندی', max_length=100, blank=True)
+    description = models.TextField('توضیحات', blank=True)
+    technical_specs = models.JSONField('مشخصات فنی', default=dict, blank=True)
+    image = models.ImageField('تصویر بافت', upload_to=_texture_photo_path, blank=True, validators=[validate_image])
+    products = models.ManyToManyField(Product, related_name='textures', blank=True, verbose_name='محصولات سازگار')
+    is_published = models.BooleanField('نمایش در سایت', default=False, db_index=True)
+
+    class Meta:
+        ordering = ['name', 'code']
+        verbose_name = 'بافت'
+        verbose_name_plural = 'بافت‌ها'
+
+    def __str__(self):
+        return f'{self.name} — {self.code}'
+
+    @property
+    def image_url(self):
+        return '/uploads/' + self.image.name.removeprefix('public/') if self.image else ''
 
 
 class ProductImage(TimestampedModel):
