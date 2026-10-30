@@ -34,12 +34,12 @@ async function getJson<T>(path:string, seconds=60):Promise<T|null> {
 
 export async function getCategories():Promise<ProductCategory[]> {
   const data=await getJson<ProductCategory[]>('categories/',60);
-  return Array.isArray(data)?data:snapshot.categories;
+  return Array.isArray(data)&&data.length>0?data:snapshot.categories;
 }
 
 export async function getProducts():Promise<ProductApiItem[]> {
   const data = await getJson<Page<ProductApiItem>>('products/?page_size=100', 60);
-  if (data?.results) return data.results;
+  if (data?.results?.length) return data.results;
   // Temporary read-only snapshot exported from the actual local Django database.
   // Remove this fallback once the production Django API and database are available.
   return snapshot.products;

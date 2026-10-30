@@ -38,6 +38,7 @@ function glassButton(active=false){return `inline-flex min-h-11 items-center jus
 /** Filter-first catalog: texture/effect options are derived from real product specs, never invented. */
 export function ProductCollection({products,categories}:{products:ProductApiItem[];categories:ProductCategory[]}){
   const [query,setQuery]=useState('');
+  const [debouncedQuery,setDebouncedQuery]=useState('');
   const [mode,setMode]=useState<BrowseMode>('collection');
   const [category,setCategory]=useState('');
   const [facet,setFacet]=useState('');
@@ -46,6 +47,11 @@ export function ProductCollection({products,categories}:{products:ProductApiItem
   const [featureSelection,setFeatureSelection]=useState<Record<FilterKey,string>>({color:'',material:'',texture:'',application:''});
   const [initialized,setInitialized]=useState(false);
   const previousPage=useRef<number|null>(null);
+
+  useEffect(()=>{
+    const timer=window.setTimeout(()=>setDebouncedQuery(query),280);
+    return()=>window.clearTimeout(timer);
+  },[query]);
 
   const browseOptions=useMemo(()=>({
     collection:categories.map(item=>({value:item.slug,label:item.name})),
@@ -81,7 +87,7 @@ export function ProductCollection({products,categories}:{products:ProductApiItem
     key,label:features[key].label,values:[...new Set(products.map(product=>attr(product,key)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fa')),
   })).filter(feature=>feature.values.length>0),[products]);
   const visible=useMemo(()=>{
-    const needle=query.trim().toLocaleLowerCase('fa');
+    const needle=debouncedQuery.trim().toLocaleLowerCase('fa');
     const filtered=products.filter(product=>{
       const matchingBrowse=mode==='collection'
         ? product.category_slug===category
@@ -95,7 +101,7 @@ export function ProductCollection({products,categories}:{products:ProductApiItem
       const comparison=String(a.code).localeCompare(String(b.code),'en',{numeric:true});
       return sort==='code-desc'?-comparison:comparison;
     });
-  },[products,mode,category,facet,query,sort,featureSelection]);
+  },[products,mode,category,facet,debouncedQuery,sort,featureSelection]);
 
   const pageCount=Math.max(1,Math.ceil(visible.length/PAGE_SIZE));
   const currentPage=Math.min(page,pageCount);
@@ -120,7 +126,7 @@ export function ProductCollection({products,categories}:{products:ProductApiItem
   return <div dir="rtl" className="fm-product-explorer">
     <div className="mb-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div><h2 className="m-0 text-[clamp(1.45rem,2.5vw,2.25rem)] font-semibold text-[#292d2a]">سطوح فرامید را کشف کنید</h2><p className="mb-0 mt-2 text-sm leading-7 text-[#727a73]">بر اساس حس لمسی، جلوهٔ بصری یا کالکشن جست‌وجو کنید.</p></div>
+        <div><h2 className="m-0 text-[clamp(1.45rem,2.5vw,2.25rem)] font-semibold text-[#292d2a]">کاتالوگ محصولات</h2><p className="mb-0 mt-2 text-sm leading-7 text-[#727a73]">بر اساس نام، کد محصول، بافت یا کالکشن جست‌وجو کنید.</p></div>
         <span className="rounded-full border border-[#e7e8e3] bg-white/70 px-4 py-2 text-xs text-[#737a74]" aria-live="polite">{visible.length.toLocaleString('fa-IR')} محصول در این انتخاب</span>
       </div>
       <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="نوع دسته‌بندی محصولات">
@@ -134,7 +140,7 @@ export function ProductCollection({products,categories}:{products:ProductApiItem
     <div className="mb-7 rounded-[24px] border border-white/75 bg-white/55 p-4 shadow-[0_12px_38px_rgba(42,48,42,.055)] backdrop-blur-xl sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3"><h3 className="m-0 inline-flex items-center gap-2 text-sm font-semibold text-[#353b36]"><SlidersHorizontal size={17} className="text-[#b82a38]"/> جست‌وجو و فیلتر</h3>{hasFilters&&<button onClick={clear} type="button" className={glassButton(false)}><X size={14}/> پاک کردن فیلترها</button>}</div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <label className="fm-product-search"><span className="sr-only">جستجوی محصول</span><Search size={17} className="pointer-events-none text-[#858a84]"/><input type="search" value={query} onChange={event=>{setQuery(event.target.value);setPage(1)}} placeholder="نام، مدل یا کد محصول..."/></label>
+        <label className="fm-product-search"><span className="sr-only">جستجوی محصول بر اساس نام یا کد</span><Search size={17} className="pointer-events-none text-[#858a84]"/><input type="search" value={query} onChange={event=>{setQuery(event.target.value);setPage(1)}} placeholder="نام یا کد محصول..."/>{query&&<button type="button" aria-label="پاک کردن جستجوی محصول" onClick={()=>{setQuery('');setDebouncedQuery('');setPage(1)}} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[#7b817b] transition hover:bg-[#eef0eb] hover:text-[#343a35]"><X size={14}/></button>}</label>
         <label className="fm-filter-select"><span className="sr-only">مرتب‌سازی</span><ArrowDownUp size={16} className="text-[#858a84]"/><select aria-label="مرتب‌سازی محصولات" value={sort} onChange={event=>{setSort(event.target.value as Sort);setPage(1)}}><option value="code-asc">کد: صعودی</option><option value="code-desc">کد: نزولی</option><option value="name-asc">نام: الفبایی</option></select></label>
         {availableFeatures.length>0&&<details className="fm-product-advanced-filters"><summary>فیلترهای بیشتر <span>{availableFeatures.length.toLocaleString('fa-IR')}</span></summary><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{availableFeatures.map(feature=><label key={feature.key} className="fm-filter-select"><span className="sr-only">{feature.label}</span><select aria-label={feature.label} value={featureSelection[feature.key]} onChange={event=>{setFeatureSelection(current=>({...current,[feature.key]:event.target.value}));setPage(1)}}><option value="">{feature.label}: همه</option>{feature.values.map(value=><option value={value} key={value}>{value}</option>)}</select></label>)}</div></details>}
       </div>

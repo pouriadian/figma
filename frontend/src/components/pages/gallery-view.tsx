@@ -24,7 +24,7 @@ export async function GalleryView() {
       : entries.length ? entries.map(e => ({src:e.image,title:e.title}))
         : asset.interiors.map((src,i) => ({src,title:titles[i]}));
   return <SiteShell>
-    <PageIntro title={gallery?.title||hero?.title||'گالری تصاویر'} subtitle="FAROMID GALLERY" description="نگاهی به فضاها و پروژه‌هایی که با محصولات فرامید شکل گرفته‌اند." image={hero?.image||asset.interiors[0]} compact/>
+    <PageIntro title={gallery?.title||hero?.title||'پروژه‌ها'} subtitle="FAROMID PROJECTS" description="نگاهی به فضاها و پروژه‌هایی که با محصولات فرامید شکل گرفته‌اند." image={hero?.image||asset.interiors[0]} compact/>
     <section className="bg-[#f5f5f1] py-14 sm:py-20">
       <Container>
         <EditorialGallery items={items} zoomable pageSize={6}/>

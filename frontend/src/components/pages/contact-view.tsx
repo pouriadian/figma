@@ -2,7 +2,7 @@ import {ExternalLink,Mail,MapPin,Phone} from 'lucide-react';
 import {SiteShell} from '@/components/layout/site-shell';
 import {Container} from '@/components/ui/brand-ui';
 import {ContactMessageModal} from '@/components/contact-message-modal';
-import {CONTACT_SHOWROOM} from '@/lib/constants';
+import {CONTACT_LOCATIONS,CONTACT_SHOWROOM} from '@/lib/constants';
 import {getSitePage,getSection} from '@/lib/site-pages';
 import {CMSExtraBlock} from '@/components/sections/cms-extra-block';
 
@@ -32,7 +32,7 @@ export async function ContactView(){const page=await getSitePage('contact');cons
       {details?.body&&<div className="rounded-[20px] border border-white/10 bg-white/[0.06] p-5 text-sm leading-8 text-white/75 backdrop-blur-xl sm:col-span-2" dangerouslySetInnerHTML={{__html:details.body}}/>}
       <div className="rounded-[20px] border border-white/10 bg-white/[0.06] p-5 text-white shadow-[0_12px_32px_rgba(0,0,0,.12)] backdrop-blur-xl"><div className="mb-2 flex items-center gap-2.5 text-white/75"><Phone size={18}/><h2 className="m-0 text-sm font-semibold">تلفن</h2></div><a href="tel:+982178328000" className="text-base font-medium text-white transition hover:text-white/75 hover:underline" dir="ltr">021 7832 8000</a></div>
       <div className="rounded-[20px] border border-white/10 bg-white/[0.06] p-5 text-white shadow-[0_12px_32px_rgba(0,0,0,.12)] backdrop-blur-xl"><div className="mb-2 flex items-center gap-2.5 text-white/75"><Mail size={18}/><h2 className="m-0 text-sm font-semibold">ایمیل</h2></div><a href="mailto:info@faromid.com" className="text-sm text-white transition hover:text-white/75 hover:underline" dir="ltr">info@faromid.com</a></div>
-      <div className="rounded-[20px] border border-white/10 bg-white/[0.06] p-5 text-white shadow-[0_12px_32px_rgba(0,0,0,.12)] backdrop-blur-xl sm:col-span-2"><div className="mb-2 flex items-center gap-2.5 text-white/75"><MapPin size={18}/><h2 className="m-0 text-sm font-semibold">آدرس کارخانه</h2></div><p className="mb-0 text-[13px] leading-7 text-white/65">کیلومتر ۲۰ جاده خاوران، روبروی فرون‌آباد اول، کوچه صاحب‌الزمان</p></div>
+      {CONTACT_LOCATIONS.map(location=><div key={location.label} className="rounded-[20px] border border-white/10 bg-white/[0.06] p-5 text-white shadow-[0_12px_32px_rgba(0,0,0,.12)] backdrop-blur-xl"><div className="mb-2 flex items-center gap-2.5 text-white/75"><MapPin size={18}/><h2 className="m-0 text-sm font-semibold">{location.label}</h2></div><p className="mb-0 text-[13px] leading-7 text-white/65">{location.address}</p></div>)}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-white/10 bg-white/[0.06] p-5 text-white shadow-[0_12px_32px_rgba(0,0,0,.12)] backdrop-blur-xl sm:col-span-2"><p className="m-0 max-w-md text-sm leading-7 text-white/65">برای پرسش درباره محصولات یا همکاری، پیام خود را برای ما بفرستید.</p><ContactMessageModal/></div>
     </div></Container>
   </section>

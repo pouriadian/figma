@@ -8,7 +8,7 @@ import {ChevronDown,Menu,X} from 'lucide-react';
 import {brand} from '@/lib/media';
 import {links} from '@/lib/constants';
 
-const primary=links.filter(item=>['/','/products','/gallery','/about'].includes(item.href));
+const primary=links.filter(item=>['/','/products','/textures','/gallery','/contact','/about'].includes(item.href));
 const secondary=links.filter(item=>!primary.some(main=>main.href===item.href));
 
 /** Same glass navbar on every public page, including the homepage. */

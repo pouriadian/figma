@@ -48,7 +48,7 @@ export async function HomeGallery({content}: {content?:CMSSection}){
  ];
  const mosaicSizes=['36vw','22vw','43vw','22vw','15vw','30vw'];
  return <section className="bg-[#f5f5f1] py-16 sm:py-20"><Container>
-  <SectionTitle title={content?.title||"گالری تصاویر"} action={{href:'/gallery',label:'بیشتر'}} />
+  <SectionTitle title={content?.title||"پروژه‌ها"} action={{href:'/gallery',label:'مشاهده پروژه‌ها'}} />
   <div dir="ltr" className={`grid grid-cols-2 auto-rows-[minmax(9rem,1fr)] gap-3 sm:gap-4 ${useMosaic?'lg:aspect-[2.2] lg:auto-rows-auto lg:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-rows-[1.2fr_1fr]':'lg:grid-cols-3'} lg:gap-5`}>
     {pictures.map(({src,title},index)=><Link href="/gallery" key={src} className={`group relative block min-h-[10rem] overflow-hidden rounded-[3px] bg-[#c8cbc6] ${index===0?'row-span-2 min-h-[21rem]':''} ${useMosaic?`${mosaicSlots[index]||''} lg:min-h-0`:''}`} aria-label={title}>
       <Image src={src} alt={title} fill sizes={useMosaic?`(max-width: 1024px) 50vw, ${mosaicSizes[index]||'30vw'}`:"(max-width:650px) 50vw, (max-width:1024px) 50vw, 33vw"} className="object-cover transition-transform duration-700 group-hover:scale-[1.025]" />
